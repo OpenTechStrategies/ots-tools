@@ -31,8 +31,16 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-#input is a file
-FILENAME_PARAM="$1"
+# input is a file
+
+# send error if argument not given
+if [ ${1}X = "X" ]; then
+    echo "Error: Argument required. Please enter a filename."
+    exit 1
+else
+    FILENAME_PARAM="$1"
+fi
+
 TMP_PREFIX=$$
 TMP_FILE=$TMP_PREFIX-list-of-years.tmp
 
@@ -49,41 +57,58 @@ CURRENT_YEAR=${y}
 
 # find first and last commits in the year
 
-# TODO: need to account for a case with less than three commits in the year
-# cases:
-# no commits in a year (fine)
-# 1 commit in a year
-# 2 commits in a year
-# 3 or more commits in a year (fine)
+# note that a manual look at git log may show some commits in a year
+# that do not turn up using git log --since --until.  These commits
+# were probably made in a given year x and pulled into master in
+# another year y.  For this script they are changes in year y, even
+# though the commit was made in year x.
 
-END_COMMIT=$(git log --since "$CURRENT_YEAR-01-01" --until "$CURRENT_YEAR-12-31" --pretty=format:"%H" $FILENAME_PARAM | head -1)
-echo $CURRENT_YEAR $END_COMMIT
-START_COMMIT=$(git log --since "$CURRENT_YEAR-01-01" --until "$CURRENT_YEAR-12-31" --pretty=format:"%H" $FILENAME_PARAM | tail -1)
-echo $CURRENT_YEAR $START_COMMIT
+# NB that this is a complex question and let us reiterate that this
+# script does not provide legal advice.
+
+END_COMMIT=$(git log --since "$CURRENT_YEAR-01-01" \
+ --until "$CURRENT_YEAR-12-31" --pretty=format:"%H" $FILENAME_PARAM | head -1)
+START_COMMIT=$(git log --since "$CURRENT_YEAR-01-01" \
+ --until "$CURRENT_YEAR-12-31" --pretty=format:"%H" $FILENAME_PARAM | tail -1)
 
 YEARLY_DIFF_RESULT_FILE=$TMP_PREFIX-$CURRENT_YEAR-result.tmp
 
-git diff $START_COMMIT..$END_COMMIT > $YEARLY_DIFF_RESULT_FILE
+# if the start and end commits exist and neither is the empty string
+if [ "x$START_COMMIT" != "x" -a "x$END_COMMIT" != "x" ]; then
 
-#read file, count lines starting with + and lines starting with -, then find the difference
+# TODO: check that parent of $START_COMMIT exists.
 
-NUM_LINES_ADDED=$(grep -e "^+ " $YEARLY_DIFF_RESULT_FILE | wc -l)
-NUM_LINES_DELETED=$(grep -e "^- " $YEARLY_DIFF_RESULT_FILE | wc -l)
+    # if there is only one commit in the year
+    if [ $START_COMMIT = $END_COMMIT ]; then
+        git diff "$START_COMMIT^"..$START_COMMIT > $YEARLY_DIFF_RESULT_FILE
+    # if there are two or more commits in the year
+    else
+        git diff $START_COMMIT..$END_COMMIT > $YEARLY_DIFF_RESULT_FILE
+    fi
+
+# read file, count lines starting with + and lines starting with -, then find the difference
+
+    NUM_LINES_ADDED=$(grep -e "^+ " $YEARLY_DIFF_RESULT_FILE | wc -l)
+    NUM_LINES_DELETED=$(grep -e "^- " $YEARLY_DIFF_RESULT_FILE | wc -l)
 
 # find abs value of the difference 
 
-YEARLY_DIFF_LINE_COUNT=$(dc -e "$NUM_LINES_ADDED $NUM_LINES_DELETED - 2 ^ v p")
+    YEARLY_DIFF_LINE_COUNT=$(dc -e "$NUM_LINES_ADDED $NUM_LINES_DELETED - 2 ^ v p")
 
-if [ $YEARLY_DIFF_LINE_COUNT -gt 3 ] ; then
+    if [ $YEARLY_DIFF_LINE_COUNT -gt 3 ] ; then
     # TODO: write year and filename to our list.
-    echo ${y};
-fi
+        echo ${y};
+    fi
+    
+    # clean up tmp file
+    rm ${YEARLY_DIFF_RESULT_FILE}
 
+# end if start/end commits exist
+fi
+# end loop of years modified
 done
 
-#output is a list of years in which that file was modified to the tune of 3 total lines or more
-
-# clean up tmp files
-
 rm ${TMP_FILE}
-rm ${YEARLY_DIFF_RESULT_FILE}
+
+# output is a list of years in which the given file was modified to
+# the tune of 3 total lines or more 
