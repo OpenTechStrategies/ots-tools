@@ -72,34 +72,51 @@ START_COMMIT=$(git log --since "$CURRENT_YEAR-01-01" \
  --until "$CURRENT_YEAR-12-31" --pretty=format:"%H" $FILENAME_PARAM | tail -1)
 
 YEARLY_DIFF_RESULT_FILE=$TMP_PREFIX-$CURRENT_YEAR-result.tmp
+# this currently throws "fatal: Not a valid object name" if the commit
+# doesn't exist.
+COMMIT_PARENT=$(git cat-file -t "$START_COMMIT^")
 
 # if the start and end commits exist and neither is the empty string
 if [ "x$START_COMMIT" != "x" -a "x$END_COMMIT" != "x" ]; then
-
-# TODO: check that parent of $START_COMMIT exists.
-
+    if [ "$COMMIT_PARENT" = "commit" ]; then #parent commit exists
     # if there is only one commit in the year
-    if [ $START_COMMIT = $END_COMMIT ]; then
-        git diff "$START_COMMIT^"..$START_COMMIT > $YEARLY_DIFF_RESULT_FILE
+        if [ $START_COMMIT = $END_COMMIT ]; then # and start commit parent exists
+            git diff-tree "$START_COMMIT^"..$START_COMMIT --stat $FILENAME_PARAM > \
+                $YEARLY_DIFF_RESULT_FILE
     # if there are two or more commits in the year
-    else
-        git diff $START_COMMIT..$END_COMMIT > $YEARLY_DIFF_RESULT_FILE
+        else
+            git diff-tree "$START_COMMIT^"..$END_COMMIT --stat $FILENAME_PARAM > $YEARLY_DIFF_RESULT_FILE
+        fi
+    else #parent commit does not exist
+        git diff-tree $END_COMMIT --root --stat $FILENAME_PARAM > \
+            $YEARLY_DIFF_RESULT_FILE
     fi
 
-# read file, count lines starting with + and lines starting with -, then find the difference
+# read file, find insertions and deletions listed by diff-tree --stat
 
-    NUM_LINES_ADDED=$(grep -e "^+ " $YEARLY_DIFF_RESULT_FILE | wc -l)
-    NUM_LINES_DELETED=$(grep -e "^- " $YEARLY_DIFF_RESULT_FILE | wc -l)
+    NUM_LINES_ADDED=$( awk '{ if ($5 == "insertions(+),") print $4; \
+        else if ($5 == "insertions(+)") print $4; }' \
+        $YEARLY_DIFF_RESULT_FILE) 
+    # convert empty string to zero for dc
+    if [ "x$NUM_LINES_ADDED" = "x" ]; then
+        NUM_LINES_ADDED=0
+    fi
+    NUM_LINES_DELETED=$( awk '{ if ($5 == "deletions(-)") print $4; \
+        else if ($7 == "deletions(-)") print $6 }' \
+        $YEARLY_DIFF_RESULT_FILE) 
+    # convert empty string to zero for dc
+    if [ "x$NUM_LINES_DELETED" = "x" ]; then
+        NUM_LINES_DELETED=0
+    fi
 
 # find abs value of the difference 
-
     YEARLY_DIFF_LINE_COUNT=$(dc -e "$NUM_LINES_ADDED $NUM_LINES_DELETED - 2 ^ v p")
-
     if [ $YEARLY_DIFF_LINE_COUNT -gt 3 ] ; then
-    # TODO: write year and filename to our list.
+    # TODO: write year and filename to a copyright notice in the file
+    # for now, print to stdout
         echo ${y};
     fi
-    
+
     # clean up tmp file
     rm ${YEARLY_DIFF_RESULT_FILE}
 
