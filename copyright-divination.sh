@@ -72,9 +72,11 @@ START_COMMIT=$(git log --since "$CURRENT_YEAR-01-01" \
  --until "$CURRENT_YEAR-12-31" --pretty=format:"%H" $FILENAME_PARAM | tail -1)
 
 YEARLY_DIFF_RESULT_FILE=$TMP_PREFIX-$CURRENT_YEAR-result.tmp
-# this currently throws "fatal: Not a valid object name" if the commit
-# doesn't exist.
-COMMIT_PARENT=$(git cat-file -t "$START_COMMIT^")
+
+# trap the "fatal: Not a valid object name" error from git cat-file
+TEST_GIT_COMMIT_RESULT_FILE=$TMP_PREFIX-git-result.tmp
+COMMIT_PARENT=$(git cat-file -t "$START_COMMIT^") 2> \
+    $TEST_GIT_COMMIT_RESULT_FILE
 
 # if the start and end commits exist and neither is the empty string
 if [ "x$START_COMMIT" != "x" -a "x$END_COMMIT" != "x" ]; then
@@ -126,6 +128,7 @@ fi
 done
 
 rm ${TMP_FILE}
+rm ${TEST_GIT_COMMIT_RESULT_FILE}
 
 # output is a list of years in which the given file was modified to
 # the tune of 3 total lines or more 
