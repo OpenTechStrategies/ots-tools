@@ -1,11 +1,11 @@
 #!/bin/sh
 
-# *~*~*~* ATTENTION: THIS IS A WORK IN PROGRESS THAT IS NOT READY FOR PRODUCTION USE. *~*~*~*
+# This script is still beta software.  We welcome bug reports.
 #
-# Use this script to find out in which years a given file was modified
-# enough to include in copyright notices.  The script takes a
-# git-versioned file as its argument and returns a newline-separated
-# list of years to include in the copyright notice on that file.
+# Find out in which years a given file was modified enough to include
+# in copyright notices.  The script takes a path to a git-versioned
+# file as its argument and returns a newline-separated list of years
+# to include in the copyright notice on that file.
 # 
 # THIS SCRIPT DOES NOT PROVIDE LEGAL ADVICE.  We do not assert that
 # its results are correct or that they will stand up under legal
@@ -15,7 +15,16 @@
 # designed to assist humans as they determine the correct years to
 # include in their copyright notices, not to replace human effort and
 # intelligence.
+# 
+# Usage example.  The <file> here is under git version control and was
+# modified in 2005, 2008, and 2011.
+#     $ ./copyright-divination.sh <file>
+#     2005
+#     2008
+#     2011
+#     $
 #
+
 # Copyright (C) 2015 Open Tech Strategies, LLC
 #
 # This program is free software: you can redistribute it and/or modify
@@ -36,6 +45,10 @@
 # send error if argument not given
 if [ ${1}X = "X" ]; then
     echo "Error: Argument required. Please enter a filename."
+    exit 1
+# or if more than one file given
+elif [ ${2}X != "X" ]; then
+    echo "Error: Please enter only one filename."
     exit 1
 else
     FILENAME_PARAM="$1"
