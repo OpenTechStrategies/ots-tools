@@ -30,7 +30,8 @@ import sys
 
 
 # with thanks to:
-# http://stackoverflow.com/questions/845058/how-to-get-line-count-cheaply-in-python
+# http://stackoverflow.com/questions/845058/how-to-get-line-count-cheaply-in-python,
+# this counts the lines in a file:
 def file_len(fname):
     with open(fname) as f:
         for i, l in enumerate(f):
@@ -51,16 +52,19 @@ def find_filesizes(root):
     for duplicate in root:
         # find the filenames
         filepath1 = duplicate._children[0].attrib['path']
-        # TBD: Chop off the first part, up to "coeci-cms-mpsp." This is
+        # Chop off the first part, up to "coeci-cms-mpsp." This is
         # an artifact of my particular CPD-generated XML file, so others
         # might not need to do this split.
         filepath1 = filepath1.split('../../../')[1]
         filepath2 = duplicate._children[1].attrib['path']
         filepath2 = filepath2.split('../../../')[1]
         # get the number of lines of each file
-        # TBD: include relative path to the file
-        filesize1 = file_len(filepath1)
-        filesize2 = file_len(filepath2)
+        try:
+            filesize1 = file_len(sys.argv[2] + filepath1)
+            filesize2 = file_len(sys.argv[2] + filepath2)
+        except IndexError:
+            print("Please provide the path to 'coeci-cms-mpsp'.")
+            return None
         # get the size of the duplication ("lines")
         dupe_size = duplicate.attrib['lines']
         filesizes_array.append([dupe_size, filesize1, filepath1, filesize2, filepath2])
@@ -77,8 +81,8 @@ def percentage_duplicated(size_array):
     percent_array = []
     for arr in size_array:
         dupe = int(arr[0])
-        percent1 = round(dupe/arr[1], 2)
-        percent2 = round(dupe/arr[3], 2)
+        percent1 = round(float(dupe)/float(arr[1]), 2)
+        percent2 = round(float(dupe)/float(arr[3]), 2)
         percent_array.append([percent1, arr[2], percent2, arr[4]])
 
     return percent_array
@@ -94,28 +98,42 @@ def sort_files(percent_array):
     return sorted_array
 
 
+# Print the files with the percentage that they are duplicated to
+# stdout.
+# Takes an array with the following elements: percentage of first file
+# duplicated, first file name, percentage of second file duplicated,
+# second file name.
+def prettyprint_filelist(files):
+    for duped_file in files:
+        print(duped_file[1] + " is " + str(duped_file[0]*100) + "% duplicated")
+        print(duped_file[3] + " is " + str(duped_file[2]*100) + "% duplicated")
+    return
+
 
 # Parses command line arguments (an XML file and a path to the top-level
 # dir where the files referenced in that XML file reside), and returns a
 # sorted list of the most-heavily-duplicated files.
-def main(sys):
-    if sys.argv[1]:
+def main():
+    try:
         tree = Tree.parse(sys.argv[1])
         root = tree.getroot()
-        print("TESTING: okay, got root")
-    else:
-        print("Please provide the xml file.")
-        return
+    except IndexError:
+        print("Please provide an xml file.")
+        return None
+
 
     array_of_sizes = find_filesizes(root)
-    print("TESTING: made the array of sizes")
-    # 4. compare the size of the file(s) to the size of the duplication
-    array_of_percents = percentage_duplicated(array_of_sizes)
+    # compare the size of the file(s) to the size of the duplication
+    try:
+        array_of_percents = percentage_duplicated(array_of_sizes)
+    except TypeError:
+        return None
     
-    # 5. sort output based on the result of that comparison
+    # sort output based on the result of that comparison
     file_list = sort_files(array_of_percents)
-    
-    print(file_list)
-    return file_list
 
-main(sys)
+    # display sorted list to user
+    prettyprint_filelist(file_list)
+    return
+
+main()
