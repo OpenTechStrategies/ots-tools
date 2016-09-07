@@ -38,36 +38,73 @@ def file_len(fname):
             pass
     return i + 1
 
+
 # Takes a set of pre-parsed elements from an xml file and returns a list
-# of lists.  Each list contains the relevant parts of each element:
+# of lists.
+# Combines the number of lines duplicated in a pair of files so that the
+# ultimate percentage represents the total duplication across files,
+# rather than the percentage duplicated in each chunk.
+# Returns a list of lists with [total lines duplicated, file path 1,
+# file path 2]
+def total_duplication(xml_root):
+    reduced_filelist = []
+    for filepair in xml_root:
+        # find the filenames
+        filepath1 = filepair._children[0].attrib['path']
+        # Chop off the first part, up to "coeci-cms-mpsp." This is
+        # an artifact of my particular CPD-generated XML file, so others
+        # might not need to do this split.
+        filepath1 = filepath1.split('../../../')[1]
+        filepath2 = filepair._children[1].attrib['path']
+        filepath2 = filepath2.split('../../../')[1]
+        # get the size of the duplication ("lines")
+        dupe_size = filepair.attrib['lines']
+
+        # If both files already exist as a pair in the reduced_filelist
+        # array then add the dupe_size to their existing dupe element
+        # and do not add them to reduced_filelist.  Otherwise add them
+        # as a new list in reduced_filelist.
+        include_pair = True
+        for pair in reduced_filelist:
+            if (pair[1] == filepath1) and (pair[2] == filepath2):
+                #print("Found one:")
+                #print("First file is " + pair[1] + " or " + filepath1)
+                #print("Second file is " + pair[2] + " or " + filepath2)
+                # update dupe size
+                #print("Size of duplication chunk is " + dupe_size)
+                pair[0] = int(pair[0]) + int(dupe_size)
+                #print("Total duplication becomes " + str(pair[0]))
+                # don't include it in reduced list
+                include_pair = False
+                break
+
+        if include_pair:
+            reduced_filelist.append([dupe_size, filepath1, filepath2])
+        
+        
+    return reduced_filelist
+
+
+# Takes a list of lists, alters it, and returns it.  Each returned list
+# contains: 
 # - number of lines duplicated
 # - number of lines in first file
 # - abbreviated path to first file
 # - number of lines in second file
 # - abbreviated path to second file
-def find_filesizes(root):
+def find_filesizes(filelist):
     filesizes_array = []
     
     # for each `duplication` block in the xml file:
-    for duplicate in root:
-        # find the filenames
-        filepath1 = duplicate._children[0].attrib['path']
-        # Chop off the first part, up to "coeci-cms-mpsp." This is
-        # an artifact of my particular CPD-generated XML file, so others
-        # might not need to do this split.
-        filepath1 = filepath1.split('../../../')[1]
-        filepath2 = duplicate._children[1].attrib['path']
-        filepath2 = filepath2.split('../../../')[1]
+    for filepair in filelist:
         # get the number of lines of each file
         try:
-            filesize1 = file_len(sys.argv[2] + filepath1)
-            filesize2 = file_len(sys.argv[2] + filepath2)
+            filesize1 = file_len(sys.argv[2] + filepair[1])
+            filesize2 = file_len(sys.argv[2] + filepair[2])
         except IndexError:
             print("Please provide the path to 'coeci-cms-mpsp'.")
             return None
-        # get the size of the duplication ("lines")
-        dupe_size = duplicate.attrib['lines']
-        filesizes_array.append([dupe_size, filesize1, filepath1, filesize2, filepath2])
+        filesizes_array.append([filepair[0], filesize1, filepair[1], filesize2, filepair[2]])
 
     return filesizes_array
 
@@ -77,13 +114,14 @@ def find_filesizes(root):
 #  - name of file 1
 #  - percentage of lines of file 2 duplicated
 #  - name of file 2
+#  - number of lines duplicated
 def percentage_duplicated(size_array):
     percent_array = []
     for arr in size_array:
         dupe = int(arr[0])
         percent1 = round(float(dupe)/float(arr[1]), 2)
         percent2 = round(float(dupe)/float(arr[3]), 2)
-        percent_array.append([percent1, arr[2], percent2, arr[4]])
+        percent_array.append([percent1, arr[2], percent2, arr[4], arr[0]])
 
     return percent_array
 
@@ -102,11 +140,13 @@ def sort_files(percent_array):
 # stdout.
 # Takes an array with the following elements: percentage of first file
 # duplicated, first file name, percentage of second file duplicated,
-# second file name.
+# second file name, total lines duplicated.
 def prettyprint_filelist(files):
     for duped_file in files:
-        print(duped_file[1] + " is " + str(duped_file[0]*100) + "% duplicated")
-        print(duped_file[3] + " is " + str(duped_file[2]*100) + "% duplicated")
+        print("PAIR: " + str(duped_file[4]) +  " lines in common:")
+        print("  " + str(duped_file[0]*100) + "% of " + duped_file[1])
+        print("  " + str(duped_file[2]*100) + "% of " + duped_file[3])
+        print("\n")
     return
 
 
@@ -121,8 +161,10 @@ def main():
         print("Please provide an xml file.")
         return None
 
-
-    array_of_sizes = find_filesizes(root)
+    # Combine all the duplicated sections of a file to get total
+    # duplicated percentage
+    shorter_filelist = total_duplication(root)
+    array_of_sizes = find_filesizes(shorter_filelist)
     # compare the size of the file(s) to the size of the duplication
     try:
         array_of_percents = percentage_duplicated(array_of_sizes)
