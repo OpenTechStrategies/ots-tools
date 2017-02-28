@@ -10,6 +10,7 @@
 
 import csv
 from mwclient import Site
+from mwclient import errors
 import sys
 
 csv_file = sys.argv[1]
@@ -45,6 +46,18 @@ with open(csv_file, 'rb') as csvfile:
             cell_num = 0
             for cell in row:
                 if cell_num == 0:
+                    # Add more information to the title.
+                    new_title = 'Proposal_'+ str(row_num) + ': ' + cell
+                    try:
+                        page.move(new_title)
+                    except errors.APIError:
+                        # We could delete the existing page, or just
+                        # give an error.
+                        #old_page = site.pages[new_title]
+                        #old_page.delete()
+                        #page.move(new_title)
+                        print("WARNING: a page named " + new_title + " already exists")
+                        
                     toc_text += cell + "\n"
                 # Set the contents of each cell to their own section.
                 if cell is not "":
@@ -68,7 +81,7 @@ with open(csv_file, 'rb') as csvfile:
                     # script.
                     try:
                         page.save(cell_text, section=cell_num, sectiontitle=header_array[cell_num])
-                    except:
+                    except errors.APIError:
                         page.save(cell_text, section='new', sectiontitle=header_array[cell_num])
                     
                 cell_num += 1
