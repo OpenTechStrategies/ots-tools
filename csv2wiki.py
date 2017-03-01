@@ -16,14 +16,44 @@
 # Usage:
 # $ python csv2wiki.py [create | delete] <filename> <username> <password>
 #
-# NOTE: If you run create/delete multiple times, you may need to run
+# NOTES: 
 #
-#     $ php maintenance/rebuildall.php
+#  - If you run create/delete multiple times, you may need to run
 #
-# in your mediawiki instance to link pages to their categories properly.
-# This script takes about 10 minutes to run for a wiki with <300 pages.
+#      $ php maintenance/rebuildall.php
 #
+#    in your mediawiki instance to link pages to their categories properly.
+#    This script takes about 10 minutes to run for a wiki with <300 pages.
 #
+#  - If you get errors saving some pages, read this:
+#
+#    If your MediaWiki instance has Extension:SpamBlacklist enabled,
+#    then you may get errors when trying to create pages that contain
+#    certain kinds of URLs or email addresses (namely, URLs or email
+#    addresses that SpamBlacklist thinks look spammy). 
+#    
+#    One solution is to just turn off Extension:SpamBlacklist entirely.
+#    But even if you don't have that kind of administrative access,
+#    you might still have enough access to *configure* the extension, 
+#    in which case you can whitelist everything via a catchall regexp.
+#    Visit one or of of these pages:
+#
+#      https://mywiki.example.com/index.php?title=MediaWiki:Spam-whitelist
+#      https://mywiki.example.com/index.php?title=MediaWiki:Email-whitelist
+#
+#    You'll see a commented-out explanation of how the whitelist works.
+#    Just add a line with ".*", as in this example...
+#
+#      # External URLs matching this list will *not* be blocked even if they would
+#      # have been blocked by blacklist entries.
+#      #
+#      # Syntax is as follows:
+#      #   * Everything from a "#" character to the end of the line is a comment
+#      #   * Every non-blank line is a regex fragment which will only match hosts inside URLs
+#      .*
+#
+#    ...to be able to save a page with any URL (and things work
+#    similarly on the Email-whitelist page).
 #
 # Copyright (C) 2017 Open Tech Strategies, LLC
 #
