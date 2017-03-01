@@ -5,6 +5,9 @@
 # "localhost/mediawiki".  We specify 'http' by default because localhost
 # doesn't support HTTPS.
 #
+# This script is meant to be run once per CSV/wiki pair.  It might have
+# unexpected results if run more than once.
+#
 # Usage:
 # $ python csv2wiki.py <filename> <site name> <username> <password>
 
@@ -34,31 +37,17 @@ with open(csv_file, 'rb') as csvfile:
                 header_array.append(cell)
             is_header = False
         else:
-            # for each line, generate a mediawiki page
-            page_name = 'Proposal_'+ str(row_num)
-            # add the new page to the table of contents
-            toc_text += '* [[' + page_name + ']]: '
-            print(page_name)
-            page = site.pages[page_name]
-            
             # Looping over the cells in the row.  Name the sections
             # according to headers.
             cell_num = 0
             for cell in row:
                 if cell_num == 0:
-                    # Add more information to the title.
-                    new_title = 'Proposal_'+ str(row_num) + ': ' + cell
-                    try:
-                        page.move(new_title)
-                    except errors.APIError:
-                        # We could delete the existing page, or just
-                        # give an error.
-                        #old_page = site.pages[new_title]
-                        #old_page.delete()
-                        #page.move(new_title)
-                        print("WARNING: a page named " + new_title + " already exists")
-                        
-                    toc_text += cell + "\n"
+                    # For this new line, generate a mediawiki page
+                    title = 'Proposal_'+ str(row_num) + ': ' + cell
+                    print(title)
+                    page = site.pages[title]
+                    # Add the new page to the list of pages
+                    toc_text += '* [[' + title + ']] \n'
                 # Set the contents of each cell to their own section.
                 if cell is not "":
                     # A section can only be created with some text
