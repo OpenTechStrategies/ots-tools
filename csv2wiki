@@ -104,6 +104,17 @@ def create_pages(config_obj):
                             page.save(cell_text, section=cell_num, sectiontitle=header_array[cell_num])
                         except errors.APIError:
                             page.save(cell_text, section='new', sectiontitle=header_array[cell_num])
+                        # TODO: need a generic 'except' case for if we
+                        # get an error we don't know how to handle
+                        # (i.e., something other than errors.APIError).
+                        # If that happens, this function should return
+                        # some value to its caller (which is main())
+                        # to indicate that an error has happened;
+                        # otherwise the return value should be None or
+                        # some other empty "everything is okay" flag.
+                        # In addition to setting a return-error flag
+                        # here, it would be okay to print to stderr
+                        # here something about the unhandled error.
                                 
                     cell_num += 1
 
@@ -290,42 +301,44 @@ def main():
 
     filename = None
     delete = False
+    bad_opt_seen = False
     for o, a in opts:
         if o in ("-h", "-?", "--help", "--usage"):
             usage()
-            return
+            sys.exit(0)
         elif o in ("-d", "--delete"):
             delete = True
         elif o in ("-f", "--file"):
             filename = a
         else:
-            sys.stderr.write("ERROR: Unhandled option " + o)
+            sys.stderr.write("ERROR: unrecognized option " + o)
+            bad_opt_seen = True
+
+    if bad_opt_seen:
+        sys.exit(2)
 
     if filename is None:
-        sys.stderr.write("ERROR: need config file; use -f to supply it")
+        sys.stderr.write("ERROR: missing config file; use -f to supply it")
         usage(errout=True)
+        sys.exit(2)
     else:
         config_settings = parse_config_file(filename)
 
     if delete:
         try:
             delete_pages(config_settings)
-            return
         except IndexError as err:
             sys.stderr.write("ERROR: '%s' \n" % err)
             usage(errout=True)
-            return
-
-    
-    # by default, run create:
-    try:
-        create_pages(config_settings)
-    except IndexError as err:
-        sys.stderr.write("ERROR: '%s' \n" % err)
-        usage(errout=True)
-    return
+            sys.exit(1)
+    else:
+        try:
+            create_pages(config_settings)
+        except IndexError as err:
+            sys.stderr.write("ERROR: '%s' \n" % err)
+            usage(errout=True)
+            sys.exit(1)
 
 
 if __name__ == '__main__':
     main()
-
