@@ -76,6 +76,7 @@ class Configuration():
         self.delimiter = ','
         self.quotechar = '"'
         self.page_title = "Proposal"
+        self.search_string = "Proposal "
         return
 
 def create_pages(config_obj):
@@ -173,7 +174,7 @@ def create_pages(config_obj):
 
     return
 
-def delete_pages(site_url, username, password, search_string='Proposal '):
+def delete_pages(config_obj):
     """
     Deletes wiki pages matching SEARCH_STRING.
 
@@ -185,7 +186,13 @@ def delete_pages(site_url, username, password, search_string='Proposal '):
 
     PASSWORD: The password that corresponds to the Mediawiki username.
     """
-    site = Site(('http', site_url), path='/',)
+    site_url = config_obj.site_url
+    site_protocol = config_obj.site_protocol
+    username = config_obj.username
+    password = config_obj.password
+    search_string=config_obj.search_string
+    
+    site = Site((site_protocol, site_url), path=config_obj.path_to_api,)
     site.login(username, password)
     
     search_result = site.search(search_string)
@@ -246,26 +253,20 @@ def main():
 
     """
     try:
-        opts, args = getopt.getopt(sys.argv[1:], 'hd:f:', ("help", "delete", "file"))
+        opts, args = getopt.getopt(sys.argv[1:], 'hdf:', ("help", "delete", "file"))
     except getopt.GetoptError as err:
         sys.stderr.write("ERROR: '%s' \n" % err)
         usage()
         sys.exit(2)
 
     filename = None
+    delete = False
     for o, a in opts:
         if o in ("-h", "--help"):
             usage()
             return
         elif o in ("-d", "--delete"):
-            search_keyword = a
-            try:
-                delete_pages('localhost/mediawiki', sys.argv[2], sys.argv[3])
-                return
-            except IndexError as err:
-                sys.stderr.write("ERROR: '%s' \n" % err)
-                usage()
-                return
+            delete = True
         elif o in ("-f", "--file"):
             filename = a
         else:
@@ -275,6 +276,16 @@ def main():
         usage()
     else:
         config_settings = parse_config_file(filename)
+
+    if delete:
+        try:
+            delete_pages(config_settings)
+            return
+        except IndexError as err:
+            sys.stderr.write("ERROR: '%s' \n" % err)
+            usage()
+            return
+
     
     # by default, run create:
     try:
