@@ -59,8 +59,26 @@ from mwclient import Site
 from mwclient import errors
 import getopt, sys
 
+class Configuration():
+    """
+    A class that contains all the configuration options parsed from the
+    config file fed to this script.
+    """
+    def __init__(self):
+        self.site_protocol = "http"
+        self.site_url = "localhost/mediawiki"
+        self.path_to_api = "/"
+        self.username = ""
+        self.password = ""
+        self.source_filename = ""
+        self.toc_name = "List of Proposals"
+        self.cat_col = 5
+        self.delimiter = ','
+        self.quotechar = '"'
+        self.page_title = "Proposal"
+        return
 
-def create_pages(csv_file, site_url, username, password):
+def create_pages(config_obj):
     """
     Create one wiki page for each line in a supplied CSV_FILE.  The CSV
     should have a header row and at least one row of content.
@@ -73,16 +91,22 @@ def create_pages(csv_file, site_url, username, password):
 
     PASSWORD: The password that corresponds to the Mediawiki username.
     """
-    site = Site(('http', site_url), path='/',)
+    csv_file = config_obj.source_filename
+    site_url = config_obj.site_url
+    username = config_obj.username
+    password = config_obj.password
+    site_protocol = config_obj.site_protocol
+
+    site = Site((site_protocol, site_url), path=config_obj.path_to_api,)
     site.login(username, password)
     
-    toc_page = site.pages['List of Proposals']
+    toc_page = site.pages[config_obj.toc_name]
     toc_text = ""
     categories = []
     
     # read in csv
     with open(csv_file, 'rb') as csvfile:
-        reader = csv.reader(csvfile, delimiter=',', quotechar='"')
+        reader = csv.reader(csvfile, delimiter=config_obj.delimiter, quotechar=config_obj.quotechar)
         is_header = True
         row_num = 0
         for row in reader:
@@ -99,6 +123,7 @@ def create_pages(csv_file, site_url, username, password):
                 for cell in row:
                     if cell_num == 0:
                         # For this new line, generate a mediawiki page
+                        # TODO: use the config obj properly to make the title
                         title = 'Proposal_'+ str(row_num) + ': ' + cell
                         print("CREATING: " + title)
                         page = site.pages[title]
@@ -107,8 +132,8 @@ def create_pages(csv_file, site_url, username, password):
                         # Set the contents of each cell to their own section.
                     if cell is not "":
                         # A section can only be created with some text
-                        # 
-                        if cell_num == (len(row) - 1):
+                        #
+                        if cell_num == config_obj.cat_col:
                             # For the last column, create a category (NOTE:
                             # this is overly customized to a certain set of
                             # CSVs; feel free to remove this conditional for
@@ -133,7 +158,7 @@ def create_pages(csv_file, site_url, username, password):
                             page.save(cell_text, section='new', sectiontitle=header_array[cell_num])
                                 
                     cell_num += 1
-                
+
             row_num += 1
         
     # create the TOC page.
@@ -210,7 +235,9 @@ def parse_config_file(config_file):
     """
     Parses a CONFIG_FILE into configuration parameters for use in other functions.
     """
-    return
+    config = Configuration()
+    
+    return config
 
 def main():
     """
