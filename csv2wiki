@@ -17,44 +17,10 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-# NOTES: 
+# It would be simple to change the main() function to accept a different
+# url via user input.
 #
-#  - If you run create/delete multiple times, you may need to run
-#
-#      $ php maintenance/rebuildall.php
-#
-#    in your mediawiki instance to link pages to their categories properly.
-#    This script takes about 10 minutes to run for a wiki with <300 pages.
-#
-#  - If you get errors saving some pages, read this:
-#
-#    If your MediaWiki instance has Extension:SpamBlacklist enabled,
-#    then you may get errors when trying to create pages that contain
-#    certain kinds of URLs or email addresses (namely, URLs or email
-#    addresses that SpamBlacklist thinks look spammy). 
-#    
-#    One solution is to just turn off Extension:SpamBlacklist entirely.
-#    But even if you don't have that kind of administrative access,
-#    you might still have enough access to *configure* the extension, 
-#    in which case you can whitelist everything via a catchall regexp.
-#    Visit one or of of these pages:
-#
-#      https://mywiki.example.com/index.php?title=MediaWiki:Spam-whitelist
-#      https://mywiki.example.com/index.php?title=MediaWiki:Email-whitelist
-#
-#    You'll see a commented-out explanation of how the whitelist works.
-#    Just add a line with ".*", as in this example...
-#
-#      # External URLs matching this list will *not* be blocked even if they would
-#      # have been blocked by blacklist entries.
-#      #
-#      # Syntax is as follows:
-#      #   * Everything from a "#" character to the end of the line is a comment
-#      #   * Every non-blank line is a regex fragment which will only match hosts inside URLs
-#      .*
-#
-#    ...to be able to save a page with any URL (and things work
-#    similarly on the Email-whitelist page).
+# TODO: add a wrapper class to take different wiki types
 
 import csv
 from mwclient import Site
@@ -183,79 +149,116 @@ def usage():
     """
     Print a message explaining how to use this file.
     """
-# It would be simple to change the main() function to accept a different
-# url via user input.
-#
-# TODO: add a wrapper class to take different wiki types
-#
-# Usage:
-# $ python csv2wiki.py [create | delete] <filename> <username> <password>
-#
-    error_message = """ 
-    This script parses a CSV and transforms each line into a MediaWiki
-    page. It takes a file with configuration options as an argument.  To
-    use it, run:
+    print("""Convert each entry (row) in a CSV file to a MediaWiki page.
 
-        To create pages:
-            ./csv2wiki --file <config_file> 
+Basic usage:
 
-        To delete pages: 
-            ./csv2wiki --delete --file <config_file>
+  $ csv2wiki -f CONFIG_FILE CSV_FILE 
 
-    The config file should be a .ini file, with the following elements:
+The CONFIG_FILE contains the wiki URL, login information, and various
+other run-time parameters.  It is in standard .ini file format, with
+the following elements:
 
-        site_protocol: Either http or https
+  site_protocol: Either "http" or "https".
 
-        site_url: The url of the wiki, beginning after http[s]://,
-                  e.g. localhost/mediawiki.
+  site_url:      The url of the wiki, beginning after http[s]://,
+                 e.g. "localhost/mediawiki".
 
-        path_to_api: The path from the url to the api.  By default, this
-                     is /w/.  See
-                     http://mwclient.readthedocs.io/en/master/user/connecting.html.
+  path_to_api:   The API path under the URL.  Defaults to "/w/".  (See
+                 http://mwclient.readthedocs.io/en/master/user/connecting.html.)
 
-        username: The username of a user that has access to the wiki
-                  instance.  With the --delete option, this user must have
-                  permission to delete pages.
+  username:      User account that has write/create permission in the wiki.
+                 (With --delete option, user needs page-delete permission.)
 
-        password: The password of a user that has access to the wiki instance.
+  password:      The wiki password corresponding to the username.
 
-        source_filename: The path to and filename of the CSV source file. 
+  csv_input:     Path to the CSV input file.
 
-        toc_name: A string that will be used as the title of the
-                  generated Table of Contents.
+  toc_name:      Title for the generated Table of Contents page.
 
-        cat_col: The number (integer) of the column in the CSV file that
-                 should be used to create a category, if any.  Column
-                 numbering begins at 1, not 0.
+  cat_col:       The number of the column (if any) in the CSV file that
+                 should be used to create a category for that row;
+                 column numbering begins at 1, not 0.  Omit this, or
+                 leave the value blank, to not use categories at all.
 
-        delimiter: A single-char delimiter (e.g., ',') used to separate
-                   cells in the CSV file (likely this is available from
-                   whatever utility was used to generate the CSV file,
-                   like Excel).
+  delimiter:     A single-char delimiter used to separate columns in
+                 a CSV row.  If omitted, defaults to ','.
 
-        quotechar: A single-char quotechar (e.g., '"') used to wrap
-                   contents of a single cell in the CSV file.
+  quotechar:     A single-char quotechar used to wrap contents of a
+                 single cell in the CSV file.  If omitted, defaults
+                 to '"'.
 
-        page_title: TBD
+  page_title:    TBD
 
-        search_string: For use with the --delete option, which will
-                       delete all pages matching this string.  To delete
-                       all pages created with this script, this string
-                       should be similar to the page_title.
+Page deletion support
+---------------------
 
+This script also supports batch deletion of pages, since a possible
+outcome of initial runs is that you have a bunch of pages in your wiki
+that turn out to be not ready.  To remove them, pass the "--delete"
+option and use this additional parameter in the config file:
 
-    This script currently assumes that you are working with a local
-    instance of Mediawiki located at 'localhost/mediawiki'.  
+  search_string: When used with the --delete option, delete all
+                 pages whose names match this string.  This
+                 parameter has no effect without "--delete".
+                 Typically, search_string will be similar to
+                 page_title, since it is being used to delete
+                 pages originally created with this script.
 
-    The create_pages script is meant to be run once per CSV/wiki pair.
-    It might have unexpected results if run more than once.  Run with
-    the --delete option to remove all existing pages.
-    
-    Creating 250 wiki pages takes about 5 minutes using this script.
-    See the source for troubleshooting tips.
-    """
-    print(error_message)
-    return
+                 TODO: We will probably change --delete to just
+                 re-calculate page titles based on the CSV
+                 input, instead of using search_string to query
+                 the MediaWiki API for a list of pages.  This
+                 change will make search_string obsolete.
+
+Troubleshooting
+---------------
+
+* Run time may be slower than you expect.
+
+  Creating 250 wiki pages takes about 5 minutes on localhost.  
+  Part of the reason for this is that the script does a page save
+  for every section within a page; see the TODO comment near the 
+  page.save() calls in the loop over cells for more.  We may look
+  into whether the 'mwclient' library offers a caching option, or
+  maybe we'll create the whole page and save it once at the end.
+
+* If you run create/delete multiple times, you may need to run
+  
+    $ php maintenance/rebuildall.php
+  
+  in your MediaWiki instance to link pages to their categories properly.
+  That script takes about 10 minutes to run for a wiki with <300 pages.
+  
+* If you get errors saving some pages, read this:
+  
+  If your MediaWiki instance has Extension:SpamBlacklist enabled,
+  then you may get errors when trying to create pages that contain
+  certain kinds of URLs or email addresses (namely, URLs or email
+  addresses that SpamBlacklist thinks look spammy). 
+  
+  One solution is to just turn off Extension:SpamBlacklist entirely.
+  But even if you don't have that kind of administrative access,
+  you might still have enough access to *configure* the extension, 
+  in which case you can whitelist everything via a catchall regexp.
+  Visit one or of of these pages:
+  
+    https://mywiki.example.com/index.php?title=MediaWiki:Spam-whitelist
+    https://mywiki.example.com/index.php?title=MediaWiki:Email-whitelist
+  
+  You'll see a commented-out explanation of how the whitelist works.
+  Just add a line with the regular expression ".*", as in this example:
+  
+    # External URLs matching this list will *not* be blocked even if they would
+    # have been blocked by blacklist entries.
+    #
+    # Syntax is as follows:
+    #   * Everything from a "#" character to the end of the line is a comment
+    #   * Every non-blank line is a regex fragment which will only match hosts inside URLs
+    .*
+  
+  That will let you save a page containing any URL.  (Things work
+  similarly on the Email-whitelist page).""")
 
 def parse_config_file(config_file):
     """
