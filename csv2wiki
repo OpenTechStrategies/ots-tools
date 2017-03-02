@@ -202,6 +202,26 @@ the following elements:
 
   page_title:    TBD
 
+Example config file
+-------------------
+
+In this example config file, the "[csv2wiki]" section name at the top
+is ignored -- it could be any value; the .ini format insists on
+it, but this script doesn't (currently) use it.
+
+  [csv2wiki]
+  site_protocol: http
+  site_url: localhost/mediawiki
+  path_to_api: /
+  username: wikibot
+  password: wikibot1
+  source_filename: /path/to/input.csv
+  toc_name: List_of_Proposals
+  cat_col: 5
+  delimiter: ,
+  quotechar: "
+  page_title: Proposal
+
 Page deletion support
 ---------------------
 
