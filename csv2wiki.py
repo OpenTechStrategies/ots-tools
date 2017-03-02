@@ -1,20 +1,4 @@
-# Parses a CSV and transforms each line into a MediaWiki page.  This is
-# a WIP.
-#
-# This script currently assumes that you are working with a local
-# instance of Mediawiki located at 'localhost/mediawiki'.  It would be
-# simple to change the main() function to accept a different url via
-# user input.
-#
-# The create_pages script is meant to be run once per CSV/wiki pair.  It
-# might have unexpected results if run more than once.  Run the
-# delete_pages script in order to run the create script again.
-#
-# Creating 250 pages takes about 5 minutes using this script.  See the
-# TODO about speeding this up.
-#
-# Usage:
-# $ python csv2wiki.py [create | delete] <filename> <username> <password>
+#!/usr/bin/env python
 #
 # NOTES: 
 #
@@ -73,10 +57,22 @@
 import csv
 from mwclient import Site
 from mwclient import errors
-import sys
+import getopt, sys
 
 
 def create_pages(csv_file, site_url, username, password):
+    """
+    Create one wiki page for each line in a supplied CSV_FILE.  The CSV
+    should have a header row and at least one row of content.
+
+    SITE_URL: The url of the Mediawiki instance
+    (e.g. localhost/mediawiki).
+
+    USERNAME: The username for the Mediawiki instance.  Must have
+    permission to read, create, and edit pages.
+
+    PASSWORD: The password that corresponds to the Mediawiki username.
+    """
     site = Site(('http', site_url), path='/',)
     site.login(username, password)
     
@@ -95,7 +91,7 @@ def create_pages(csv_file, site_url, username, password):
                 header_array = []
                 for cell in row:
                     header_array.append(cell)
-                    is_header = False
+                is_header = False
             else:
                 # Looping over the cells in the row.  Name the sections
                 # according to headers.
@@ -128,6 +124,9 @@ def create_pages(csv_file, site_url, username, password):
                             # TODO: it's probably bad practice to save each page
                             # many times, and it's definitely slowing down the
                             # script.
+                            #
+                            # What's the deal with save/edit/text?  Send
+                            # just one API request per page.
                         try:
                             page.save(cell_text, section=cell_num, sectiontitle=header_array[cell_num])
                         except errors.APIError:
@@ -149,11 +148,22 @@ def create_pages(csv_file, site_url, username, password):
 
     return
 
-def delete_pages(site_url, username, password):
+def delete_pages(site_url, username, password, search_string='Proposal '):
+    """
+    Deletes wiki pages matching SEARCH_STRING.
+
+    SITE_URL: The url of the Mediawiki instance
+    (e.g. localhost/mediawiki).
+
+    USERNAME: The username for the Mediawiki instance.  Must have
+    permission to delete pages.
+
+    PASSWORD: The password that corresponds to the Mediawiki username.
+    """
     site = Site(('http', site_url), path='/',)
     site.login(username, password)
     
-    search_result = site.search('Proposal ')
+    search_result = site.search(search_string)
     for result in search_result:
         # get as a page
         print("DELETING: " + result['title'])
@@ -163,24 +173,91 @@ def delete_pages(site_url, username, password):
 
     return
 
-def main():
-    error_message = """
-        Usage: Please specify 'create' or 'delete'.
+def usage():
+# It would be simple to change the main() function to accept a different
+# url via user input.
+#
+# TODO: add a wrapper class to take different wiki types
+#
+# Usage:
+# $ python csv2wiki.py [create | delete] <filename> <username> <password>
+#
+    error_message = """ 
+    This WIP parses a CSV and transforms each line into a MediaWiki
+    page. It takes a file with configuration options as an argument.  To
+    use it, run:
+
         To create pages:
-            python csv2wiki.py create <csv_file> <username> <password>
-        To delete pages:
-            python csv2wiki.py delete <username> <password>
-        """
+            ./csv2wiki --file <config_file> 
+
+        To delete pages: 
+            ./csv2wiki --delete --file <config_file>
+
+    This script currently assumes that you are working with a local
+    instance of Mediawiki located at 'localhost/mediawiki'.  
+
+    The create_pages script is meant to be run once per CSV/wiki pair.
+    It might have unexpected results if run more than once.  Run with
+    the --delete option to remove all existing pages.
+    
+    Creating 250 wiki pages takes about 5 minutes using this script.
+    See the source for troubleshooting tips.
+    """
+    print(error_message)
+    return
+
+def parse_config_file(config_file):
+    """
+    Parses a CONFIG_FILE into configuration parameters for use in other functions.
+    """
+    return
+
+def main():
+    """
+    By default, creates wiki pages from a supplied CSV.  Optionally,
+    deletes those pages instead.
+
+    """
     try:
-        if sys.argv[1] == 'create':
-            create_pages(sys.argv[2], 'localhost/mediawiki', sys.argv[3], sys.argv[4])
-        elif sys.argv[1] == 'delete':
-            delete_pages('localhost/mediawiki', sys.argv[2], sys.argv[3])
+        opts, args = getopt.getopt(sys.argv[1:], 'hd:f:', ("help", "delete", "file"))
+    except getopt.GetoptError as err:
+        sys.stderr.write("ERROR: '%s' \n" % err)
+        usage()
+        sys.exit(2)
+
+    filename = None
+    for o, a in opts:
+        if o in ("-h", "--help"):
+            usage()
+            return
+        elif o in ("-d", "--delete"):
+            search_keyword = a
+            try:
+                delete_pages('localhost/mediawiki', sys.argv[2], sys.argv[3])
+                return
+            except IndexError as err:
+                sys.stderr.write("ERROR: '%s' \n" % err)
+                usage()
+                return
+        elif o in ("-f", "--file"):
+            filename = a
         else:
-            print(error_message)
-    except IndexError:
-        print(error_message)
+            sys.stderr.write("ERROR: Unhandled option " + o)
+
+    if filename is None:
+        usage()
+    else:
+        config_settings = parse_config_file(filename)
+    
+    # by default, run create:
+    try:
+        create_pages(config_settings)
+    except IndexError as err:
+        sys.stderr.write("ERROR: '%s' \n" % err)
+        usage()
     return
 
 
-main()
+if __name__ == '__main__':
+    main()
+
