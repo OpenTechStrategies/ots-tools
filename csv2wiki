@@ -145,11 +145,11 @@ def delete_pages(config_obj):
 
     return
 
-def usage():
-    """
-    Print a message explaining how to use this file.
-    """
-    print("""Convert each entry (row) in a CSV file to a MediaWiki page.
+def usage(errout=False):
+    """Print a message explaining how to use this script.
+    Print to stdout, unless ERROUT, in which case print to stderr."""
+    out = sys.stderr if errout else sys.stdout
+    out.write("""Convert each entry (row) in a CSV file to a MediaWiki page.
 
 Basic usage:
 
@@ -258,7 +258,8 @@ Troubleshooting
     .*
   
   That will let you save a page containing any URL.  (Things work
-  similarly on the Email-whitelist page).""")
+  similarly on the Email-whitelist page).
+""")
 
 def parse_config_file(config_file):
     """
@@ -283,7 +284,7 @@ def main():
         opts, args = getopt.getopt(sys.argv[1:], 'h?df:', ("help", "usage", "delete", "file="))
     except getopt.GetoptError as err:
         sys.stderr.write("ERROR: '%s' \n" % err)
-        usage()
+        usage(errout=True)
         sys.exit(2)
 
     filename = None
@@ -300,7 +301,8 @@ def main():
             sys.stderr.write("ERROR: Unhandled option " + o)
 
     if filename is None:
-        usage()
+        sys.stderr.write("ERROR: need config file; use -f to supply it")
+        usage(errout=True)
     else:
         config_settings = parse_config_file(filename)
 
@@ -310,7 +312,7 @@ def main():
             return
         except IndexError as err:
             sys.stderr.write("ERROR: '%s' \n" % err)
-            usage()
+            usage(errout=True)
             return
 
     
@@ -319,7 +321,7 @@ def main():
         create_pages(config_settings)
     except IndexError as err:
         sys.stderr.write("ERROR: '%s' \n" % err)
-        usage()
+        usage(errout=True)
     return
 
 
