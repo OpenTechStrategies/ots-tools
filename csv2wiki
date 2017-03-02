@@ -277,7 +277,7 @@ def main():
 
     """
     try:
-        opts, args = getopt.getopt(sys.argv[1:], 'hdf:', ("help", "delete", "file="))
+        opts, args = getopt.getopt(sys.argv[1:], 'h?df:', ("help", "usage", "delete", "file="))
     except getopt.GetoptError as err:
         sys.stderr.write("ERROR: '%s' \n" % err)
         usage()
@@ -286,7 +286,7 @@ def main():
     filename = None
     delete = False
     for o, a in opts:
-        if o in ("-h", "--help"):
+        if o in ("-h", "-?", "--help", "--usage"):
             usage()
             return
         elif o in ("-d", "--delete"):
