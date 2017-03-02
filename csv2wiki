@@ -216,7 +216,7 @@ def usage():
 # $ python csv2wiki.py [create | delete] <filename> <username> <password>
 #
     error_message = """ 
-    This WIP parses a CSV and transforms each line into a MediaWiki
+    This script parses a CSV and transforms each line into a MediaWiki
     page. It takes a file with configuration options as an argument.  To
     use it, run:
 
@@ -225,6 +225,48 @@ def usage():
 
         To delete pages: 
             ./csv2wiki --delete --file <config_file>
+
+    The config file should be a .ini file, with the following elements:
+
+        site_protocol: Either http or https
+
+        site_url: The url of the wiki, beginning after http[s]://,
+                  e.g. localhost/mediawiki.
+
+        path_to_api: The path from the url to the api.  By default, this
+                     is /w/.  See
+                     http://mwclient.readthedocs.io/en/master/user/connecting.html.
+
+        username: The username of a user that has access to the wiki
+                  instance.  With the --delete option, this user must have
+                  permission to delete pages.
+
+        password: The password of a user that has access to the wiki instance.
+
+        source_filename: The path to and filename of the CSV source file. 
+
+        toc_name: A string that will be used as the title of the
+                  generated Table of Contents.
+
+        cat_col: The number (integer) of the column in the CSV file that
+                 should be used to create a category, if any.  Column
+                 numbering begins at 1, not 0.
+
+        delimiter: A single-char delimiter (e.g., ',') used to separate
+                   cells in the CSV file (likely this is available from
+                   whatever utility was used to generate the CSV file,
+                   like Excel).
+
+        quotechar: A single-char quotechar (e.g., '"') used to wrap
+                   contents of a single cell in the CSV file.
+
+        page_title: TBD
+
+        search_string: For use with the --delete option, which will
+                       delete all pages matching this string.  To delete
+                       all pages created with this script, this string
+                       should be similar to the page_title.
+
 
     This script currently assumes that you are working with a local
     instance of Mediawiki located at 'localhost/mediawiki'.  
