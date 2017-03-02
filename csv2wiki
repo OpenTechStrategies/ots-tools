@@ -60,38 +60,15 @@ from mwclient import errors
 import getopt, sys
 import ConfigParser
 
-class Configuration():
-    """
-    A class that contains all the configuration options parsed from the
-    config file fed to this script.
-    """
-    def __init__(self):
-        self.site_protocol = "http"
-        self.site_url = "localhost/mediawiki"
-        self.path_to_api = "/"
-        self.username = ""
-        self.password = ""
-        self.source_filename = ""
-        self.toc_name = "List of Proposals"
-        self.cat_col = 5
-        self.delimiter = ','
-        self.quotechar = '"'
-        self.page_title = "Proposal"
-        self.search_string = "Proposal "
-        return
-
 def create_pages(config_obj):
     """
-    Create one wiki page for each line in a supplied CSV_FILE.  The CSV
-    should have a header row and at least one row of content.
+    Create one wiki page for each line in a CSV file supplied from the
+    configuration settings.  The CSV should have a header row and at
+    least one row of content.
 
-    SITE_URL: The url of the Mediawiki instance
-    (e.g. localhost/mediawiki).
+    Connect to the wiki site using the url, username, and password given
+    in the configuration settings.
 
-    USERNAME: The username for the Mediawiki instance.  Must have
-    permission to read, create, and edit pages.
-
-    PASSWORD: The password that corresponds to the Mediawiki username.
     """
     csv_file = config_obj['source_filename']
     site_url = config_obj['site_url']
@@ -135,7 +112,7 @@ def create_pages(config_obj):
                     if cell is not "":
                         # A section can only be created with some text
                         #
-                        if cell_num == config_obj['cat_col']:
+                        if cell_num == int(config_obj['cat_col']):
                             # For the last column, create a category (NOTE:
                             # this is overly customized to a certain set of
                             # CSVs; feel free to remove this conditional for
@@ -177,15 +154,9 @@ def create_pages(config_obj):
 
 def delete_pages(config_obj):
     """
-    Deletes wiki pages matching SEARCH_STRING.
-
-    SITE_URL: The url of the Mediawiki instance
-    (e.g. localhost/mediawiki).
-
-    USERNAME: The username for the Mediawiki instance.  Must have
-    permission to delete pages.
-
-    PASSWORD: The password that corresponds to the Mediawiki username.
+    Delete wiki pages matching a search string given in the configuration
+    file.  Connect to the site using the url, username, and password in
+    that file.
     """
     site_url = config_obj['site_url']
     site_protocol = config_obj['site_protocol']
@@ -207,6 +178,9 @@ def delete_pages(config_obj):
     return
 
 def usage():
+    """
+    Print a message explaining how to use this file.
+    """
 # It would be simple to change the main() function to accept a different
 # url via user input.
 #
@@ -283,7 +257,7 @@ def usage():
 
 def parse_config_file(config_file):
     """
-    Parses a CONFIG_FILE into configuration parameters for use in other functions.
+    Parse a CONFIG_FILE into configuration parameters for use in other functions.
     """
     config_obj = {}
     config = ConfigParser.ConfigParser()
