@@ -47,8 +47,12 @@ def create_pages(config_obj):
     username = config_obj['username']
     password = config_obj['password']
 
+    path_to_api = config_obj.get('path_to_api')
+    if path_to_api is None:
+      path_to_api = "/"
+
     try:
-        site = Site(wiki_url.split("://"), path=config_obj['path_to_api'],)
+        site = Site(wiki_url.split("://"), path=path_to_api)
     except requests.exceptions.HTTPError as err: 
         sys.stderr.write("ERROR: failed to connect to wiki URL '%s'\n" % wiki_url)
         sys.stderr.write("       Error details:\n")
@@ -159,7 +163,11 @@ def delete_pages(config_obj):
     password = config_obj['password']
     search_string=config_obj['search_string']
     
-    site = Site(wiki_url.split("://"), path=config_obj['path_to_api'],)
+    path_to_api = config_obj.get('path_to_api')
+    if path_to_api is None:
+      path_to_api = "/"
+
+    site = Site(wiki_url.split("://"), path=path_to_api,)
     site.login(username, password)
     
     search_result = site.search(search_string)
@@ -189,9 +197,6 @@ the following elements:
   wiki_url:      The url of the wiki, e.g. "http://localhost/mediawiki",
                  "https://www.example.com/mwiki", etc.
 
-  path_to_api:   The API path under the URL.  Defaults to "/w/".  (See
-                 http://mwclient.readthedocs.io/en/master/user/connecting.html.)
-
   username:      User account that has write/create permission in the wiki.
                  (With --delete option, user needs page-delete permission.)
 
@@ -215,6 +220,13 @@ the following elements:
 
   page_title:    TBD
 
+  path_to_api:   The API path under the URL; defaults to "/".  See also
+                 http://mwclient.readthedocs.io/en/master/user/connecting.html.
+                 Note that on Wikipedia.org, this would be "/w/", but in
+                 most non-Wikipedia instances of MediaWiki, the default
+                 "/" is more likely.  So if you're using that default, 
+                 you don't have to specify this at all.
+
 Example config file
 -------------------
 
@@ -224,7 +236,6 @@ it, but this script doesn't (currently) use it.
 
   [csv2wiki]
   wiki_url: http://localhost/mediawiki
-  path_to_api: /
   username: wikibot
   password: wikibot1
   source_filename: /path/to/input.csv
