@@ -119,16 +119,9 @@ def create_pages(wiki_sess):
                     # Set the contents of each cell to their own section.
                 if cell is not "":
                     # A section can only be created with some text
-                    #
-                    if cell_num == wiki_sess.cat_col:
-                        # For the last column, create a category (NOTE:
-                        # this is overly customized to a certain set of
-                        # CSVs; feel free to remove this conditional for
-                        # other CSVs)
+                    # 
+                    if cell_num + 1 == wiki_sess.cat_col:
                         cell_text = '[[Category:' + cell + ']]'
-                        
-                        # Add this to the list of categories, unless
-                        # it's already there:
                         if cell not in categories:
                             categories.append(cell)
                     else:
