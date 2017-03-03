@@ -99,7 +99,8 @@ def create_pages(wiki_sess):
     is_header = True
     row_num = 0
     for row in wiki_sess.csv_input:
-        title = None
+        page_name = None
+        page_title = None
         if is_header:
             # if this is the first row, save headers
             header_array = []
