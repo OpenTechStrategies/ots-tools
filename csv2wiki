@@ -34,7 +34,7 @@ import requests
 
 class WikiSession:
     """One CSV import session with a given user and a given wiki."""
-    def __init__(self, config_obj):
+    def __init__(self, csv_file, config_obj):
         """Log in to this session, using parameters from CONFIG_OBJ."""
         self.site_conn        = None  # will be a mwclient Site object
         self.csv_input        = None  # will be csv.reader object
@@ -51,19 +51,19 @@ class WikiSession:
           self.path_to_api = "/"
 
         # First count the rows, so we can format row numbers properly.
-        csv_fh = open(config_obj['csv_file'], 'rb')
+        csv_fh = open(csv_file, 'rb')
         self.csv_input = csv.reader(csv_fh,
-                                    delimiter=config_obj.get('delimiter'),
-                                    quotechar=config_obj.get('quotechar'))
+                                    delimiter=config_obj.get('delimiter', ','),
+                                    quotechar=config_obj.get('quotechar', '"'))
         self.row_count = -1
         for row in self.csv_input: self.row_count += 1
         csv_fh.close()
 
         # Reset the reader for our callers.
-        csv_fh = open(config_obj['csv_file'], 'rb')
+        csv_fh = open(csv_file, 'rb')
         self.csv_input = csv.reader(csv_fh,
-                                    delimiter=config_obj.get('delimiter'),
-                                    quotechar=config_obj.get('quotechar'))
+                                    delimiter=config_obj.get('delimiter', ','),
+                                    quotechar=config_obj.get('quotechar', '"'))
 
         # Connect to the site.
         try:
@@ -112,10 +112,11 @@ def create_pages(wiki_sess):
                 if cell_num == 0:
                     # For this new line, generate a mediawiki page
                     row_num_str = row_format.format(row_num)
-                    title = wiki_sess.title_tmpl.format(row_num_str) + ': ' + cell
-                    page = wiki_sess.site_conn.pages[title]
+                    page_name = wiki_sess.title_tmpl.format(row_num_str)
+                    page_title = wiki_sess.title_tmpl.format(row_num_str) + ': ' + cell
+                    page = wiki_sess.site_conn.pages[page_name]
                     # Add the new page to the list of pages
-                    toc_text += '* [[' + title + ']] \n'
+                    toc_text += '* [[' + page_name + '|' + page_title + ']] \n'
                     # Set the contents of each cell to their own section.
                 if cell is not "":
                     # A section can only be created with some text
@@ -146,7 +147,7 @@ def create_pages(wiki_sess):
                 cell_num += 1
 
         if row_num > 0:
-            print("CREATED PAGE: \"" + title + "\"")
+            print("CREATED PAGE: \"" + page_title + "\"")
         row_num += 1
         
     # create the TOC page.
@@ -190,7 +191,7 @@ def usage(errout=False):
 
 Basic usage:
 
-  $ csv2wiki -c CONFIG_FILE [ --delete-matching=PATTERN ]
+  $ csv2wiki -c CONFIG_FILE [ --delete-matching=PATTERN ] CSV_FILE
 
 The CONFIG_FILE contains the wiki URL, login information, and various
 other run-time parameters.  It is in standard .ini file format, with
@@ -204,13 +205,6 @@ the following elements:
 
   password:      The wiki password corresponding to the username.
 
-  csv_input:     Path to the CSV input file.
-
-  cat_col:       The number of the column (if any) in the CSV file that
-                 should be used to create a category for that row;
-                 column numbering begins at 1, not 0.  Omit this, or
-                 leave the value blank, to not use categories at all.
-
   toc_name:      Title for the generated Table of Contents page.
 
   title_tmpl:    A string into which the row number is substituted to
@@ -220,6 +214,11 @@ the following elements:
                  "Entry_001", "Entry_002", etc.  The amount of left-side
                  0-padding will be determined automatically by the
                  number of rows in the CSV input.
+
+  cat_col:       The number of the column (if any) in the CSV file that
+                 should be used to create a category for that row;
+                 column numbering begins at 1, not 0.  Omit this, or
+                 leave the value blank, to not use categories at all.
 
   delimiter:     A single-char delimiter used to separate columns in
                  a CSV row.  If omitted, defaults to ','.
@@ -246,12 +245,9 @@ it, but this script doesn't (currently) use it.
   wiki_url: http://localhost/mediawiki
   username: wikibot
   password: wikibot1
-  csv_file: /path/to/input.csv
+  title_tmpl: Entry_{}
   toc_name: List_of_Entries
   cat_col: 5
-  delimiter: ,
-  quotechar: "
-  title_tmpl: Entry_{}
 
 Page deletion support
 ---------------------
@@ -365,7 +361,9 @@ def main():
         usage(errout=True)
         sys.exit(2)
 
-    filename = None
+    csv_file = None
+    config_file = None
+    wiki_sess = None
     delete_matching = None
     bad_opt_seen = False
     for o, a in opts:
@@ -375,7 +373,7 @@ def main():
         elif o in ("-d", "--delete-matching"):
             delete_matching = a
         elif o in ("-c", "--config"):
-            filename = a
+            config_file = a
         else:
             sys.stderr.write("ERROR: unrecognized option '%s'\n" % o)
             bad_opt_seen = True
@@ -383,14 +381,23 @@ def main():
     if bad_opt_seen:
         sys.exit(2)
 
-    if filename is None:
+    if config_file is None:
         sys.stderr.write("ERROR: missing config file; use -c to supply it\n")
         usage(errout=True)
         sys.exit(2)
     else:
-        config_settings = parse_config_file(filename)
+        config_settings = parse_config_file(config_file)
 
-    wiki_sess = WikiSession(config_settings)
+    if len(args) == 1:
+        wiki_sess = WikiSession(args[0], config_settings)
+    elif len(args) < 1:
+        sys.stderr.write("ERROR: missing CSV file argument\n")
+        usage(errout=True)
+        sys.exit(2)
+    else:
+        sys.stderr.write("ERROR: too many arguments\n")
+        usage(errout=True)
+        sys.exit(2)
 
     if delete_matching is not None:
         try:
