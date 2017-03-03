@@ -43,15 +43,14 @@ def create_pages(config_obj):
 
     """
     csv_file = config_obj['source_filename']
-    site_url = config_obj['site_url']
+    wiki_url = config_obj['wiki_url']
     username = config_obj['username']
     password = config_obj['password']
-    site_protocol = config_obj['site_protocol']
 
     try:
-        site = Site((site_protocol, site_url), path=config_obj['path_to_api'],)
+        site = Site(wiki_url.split("://"), path=config_obj['path_to_api'],)
     except requests.exceptions.HTTPError as err: 
-        sys.stderr.write("ERROR: failed to connect to wiki URL '%s'\n" % (site_protocol + "://" + site_url))
+        sys.stderr.write("ERROR: failed to connect to wiki URL '%s'\n" % wiki_url)
         sys.stderr.write("       Error details:\n")
         sys.stderr.write("       ('%s')\n" % err)
         sys.exit(1)
@@ -155,13 +154,12 @@ def delete_pages(config_obj):
     file.  Connect to the site using the url, username, and password in
     that file.
     """
-    site_url = config_obj['site_url']
-    site_protocol = config_obj['site_protocol']
+    wiki_url = config_obj['wiki_url']
     username = config_obj['username']
     password = config_obj['password']
     search_string=config_obj['search_string']
     
-    site = Site((site_protocol, site_url), path=config_obj['path_to_api'],)
+    site = Site(wiki_url.split("://"), path=config_obj['path_to_api'],)
     site.login(username, password)
     
     search_result = site.search(search_string)
@@ -188,10 +186,8 @@ The CONFIG_FILE contains the wiki URL, login information, and various
 other run-time parameters.  It is in standard .ini file format, with
 the following elements:
 
-  site_protocol: Either "http" or "https".
-
-  site_url:      The url of the wiki, beginning after http[s]://,
-                 e.g. "localhost/mediawiki".
+  wiki_url:      The url of the wiki, e.g. "http://localhost/mediawiki",
+                 "https://www.example.com/mwiki", etc.
 
   path_to_api:   The API path under the URL.  Defaults to "/w/".  (See
                  http://mwclient.readthedocs.io/en/master/user/connecting.html.)
@@ -227,8 +223,7 @@ is ignored -- it could be any value; the .ini format insists on
 it, but this script doesn't (currently) use it.
 
   [csv2wiki]
-  site_protocol: http
-  site_url: localhost/mediawiki
+  wiki_url: http://localhost/mediawiki
   path_to_api: /
   username: wikibot
   password: wikibot1
