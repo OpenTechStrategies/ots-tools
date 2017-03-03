@@ -326,7 +326,7 @@ def main():
     try:
         opts, args = getopt.getopt(sys.argv[1:], 'h?df:', ("help", "usage", "delete", "file="))
     except getopt.GetoptError as err:
-        sys.stderr.write("ERROR: '%s' \n" % err)
+        sys.stderr.write("ERROR: '%s'\n" % err)
         usage(errout=True)
         sys.exit(2)
 
@@ -342,14 +342,14 @@ def main():
         elif o in ("-f", "--file"):
             filename = a
         else:
-            sys.stderr.write("ERROR: unrecognized option " + o)
+            sys.stderr.write("ERROR: unrecognized option '%s'\n" % o)
             bad_opt_seen = True
 
     if bad_opt_seen:
         sys.exit(2)
 
     if filename is None:
-        sys.stderr.write("ERROR: missing config file; use -f to supply it")
+        sys.stderr.write("ERROR: missing config file; use -f to supply it\n")
         usage(errout=True)
         sys.exit(2)
     else:
@@ -359,14 +359,14 @@ def main():
         try:
             delete_pages(config_settings)
         except IndexError as err:
-            sys.stderr.write("ERROR: '%s' \n" % err)
+            sys.stderr.write("ERROR: '%s'\n" % err)
             usage(errout=True)
             sys.exit(1)
     else:
         try:
             create_pages(config_settings)
         except IndexError as err:
-            sys.stderr.write("ERROR: '%s' \n" % err)
+            sys.stderr.write("ERROR: '%s'\n" % err)
             usage(errout=True)
             sys.exit(1)
 
