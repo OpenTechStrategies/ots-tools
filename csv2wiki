@@ -36,19 +36,34 @@ class WikiSession:
     """One CSV import session with a given user and a given wiki."""
     def __init__(self, config_obj):
         """Log in to this session, using parameters from CONFIG_OBJ."""
-        self.site_conn        = None
-        self.csv_file         = config_obj['source_filename']
+        self.site_conn        = None  # will be a mwclient Site object
+        self.csv_input        = None  # will be csv.reader object
+        self.row_count        = None  # will be num rows not counting header
         self.wiki_url         = config_obj['wiki_url']
         self.username         = config_obj['username']
         self.password         = config_obj['password']
+        self.title_tmpl       = config_obj['title_tmpl']
         self.toc_name         = config_obj['toc_name']
         self.cat_col          = int(config_obj.get('cat_col', 0))
-        self.delimiter        = config_obj.get('delimiter')
-        self.quote_char       = config_obj.get('quotechar')
         self.path_to_api      = config_obj.get('path_to_api')
 
         if self.path_to_api is None:
           self.path_to_api = "/"
+
+        # First count the rows, so we can format row numbers properly.
+        csv_fh = open(config_obj['source_filename'], 'rb')
+        self.csv_input = csv.reader(csv_fh,
+                                    delimiter=config_obj.get('delimiter'),
+                                    quotechar=config_obj.get('quotechar'))
+        self.row_count = -1
+        for row in self.csv_input: self.row_count += 1
+        csv_fh.close()
+
+        # Reset the reader for our callers.
+        csv_fh = open(config_obj['source_filename'], 'rb')
+        self.csv_input = csv.reader(csv_fh,
+                                    delimiter=config_obj.get('delimiter'),
+                                    quotechar=config_obj.get('quotechar'))
 
         # Connect to the site.
         try:
@@ -76,76 +91,73 @@ def create_pages(wiki_sess):
 
     toc_text = ""
     categories = []
+    row_format = "{:0" + str(len(str(wiki_sess.row_count))) + "}"
 
     # read in csv
-    with open(wiki_sess.csv_file, 'rb') as csvfile:
-        reader = csv.reader(csvfile, 
-                            delimiter=wiki_sess.delimiter, 
-                            quotechar=wiki_sess.quote_char)
-        is_header = True
-        row_num = 0
-        for row in reader:
-            if is_header:
-                # if this is the first row, save headers
-                header_array = []
-                for cell in row:
-                    header_array.append(cell)
-                is_header = False
-            else:
-                # Looping over the cells in the row.  Name the sections
-                # according to headers.
-                cell_num = 0
-                for cell in row:
-                    if cell_num == 0:
-                        # For this new line, generate a mediawiki page
-                        # TODO: determine title dynamically
-                        title = 'Proposal_'+ str(row_num) + ': ' + cell
-                        print("CREATING: " + title)
-                        page = wiki_sess.site_conn.pages[title]
-                        # Add the new page to the list of pages
-                        toc_text += '* [[' + title + ']] \n'
-                        # Set the contents of each cell to their own section.
-                    if cell is not "":
-                        # A section can only be created with some text
+    is_header = True
+    row_num = 0
+    for row in wiki_sess.csv_input:
+        if is_header:
+            # if this is the first row, save headers
+            header_array = []
+            for cell in row:
+                header_array.append(cell)
+            is_header = False
+        else:
+            # Looping over the cells in the row.  Name the sections
+            # according to headers.
+            cell_num = 0
+            for cell in row:
+                if cell_num == 0:
+                    # For this new line, generate a mediawiki page
+                    row_num_str = row_format.format(row_num)
+                    title = wiki_sess.title_tmpl.format(row_num_str) + ': ' + cell
+                    print("CREATING: " + title)
+                    page = wiki_sess.site_conn.pages[title]
+                    # Add the new page to the list of pages
+                    toc_text += '* [[' + title + ']] \n'
+                    # Set the contents of each cell to their own section.
+                if cell is not "":
+                    # A section can only be created with some text
+                    #
+                    if cell_num == wiki_sess.cat_col:
+                        # For the last column, create a category (NOTE:
+                        # this is overly customized to a certain set of
+                        # CSVs; feel free to remove this conditional for
+                        # other CSVs)
+                        cell_text = '[[Category:' + cell + ']]'
+                        
+                        # Add this to the list of categories, unless
+                        # it's already there:
+                        if cell not in categories:
+                            categories.append(cell)
+                    else:
+                        cell_text = cell
+                        # TODO: it's probably bad practice to save each page
+                        # many times, and it's definitely slowing down the
+                        # script.
                         #
-                        if cell_num == wiki_sess.cat_col:
-                            # For the last column, create a category (NOTE:
-                            # this is overly customized to a certain set of
-                            # CSVs; feel free to remove this conditional for
-                            # other CSVs)
-                            cell_text = '[[Category:' + cell + ']]'
-                            
-                            # Add this to the list of categories, unless
-                            # it's already there:
-                            if cell not in categories:
-                                categories.append(cell)
-                        else:
-                            cell_text = cell
-                            # TODO: it's probably bad practice to save each page
-                            # many times, and it's definitely slowing down the
-                            # script.
-                            #
-                            # What's the deal with save/edit/text?  Send
-                            # just one API request per page.
-                        try:
-                            page.save(cell_text, section=cell_num, sectiontitle=header_array[cell_num])
-                        except errors.APIError:
-                            page.save(cell_text, section='new', sectiontitle=header_array[cell_num])
-                        # TODO: need a generic 'except' case for if we
-                        # get an error we don't know how to handle
-                        # (i.e., something other than errors.APIError).
-                        # If that happens, this function should return
-                        # some value to its caller (which is main())
-                        # to indicate that an error has happened;
-                        # otherwise the return value should be None or
-                        # some other empty "everything is okay" flag.
-                        # In addition to setting a return-error flag
-                        # here, it would be okay to print to stderr
-                        # here something about the unhandled error.
+                        # What's the deal with save/edit/text?  Send
+                        # just one API request per page.
+                    try:
+                        page.save(cell_text, section=cell_num, sectiontitle=header_array[cell_num])
+                    except errors.APIError:
+                        page.save(cell_text, section='new', sectiontitle=header_array[cell_num])
+                    # TODO: need a generic 'except' case for if we
+                    # get an error we don't know how to handle
+                    # (i.e., something other than errors.APIError).
+                    # If that happens, this function should return
+                    # some value to its caller (which is main())
+                    # to indicate that an error has happened;
+                    # otherwise the return value should be None or
+                    # some other empty "everything is okay" flag.
+                    # In addition to setting a return-error flag
+                    # here, it would be okay to print to stderr
+                    # here something about the unhandled error.
                                 
-                    cell_num += 1
+                cell_num += 1
 
-            row_num += 1
+        row_num += 1
         
     # create the TOC page.
     toc_page = wiki_sess.site_conn.pages[wiki_sess.toc_name]
@@ -154,8 +166,7 @@ def create_pages(wiki_sess):
     # generate the category pages
     for category in categories:
         print("CREATING CATEGORY: " + category)
-        page_title = 'Category:' + category
-        page = wiki_sess.site_conn.pages[page_title]
+        page = wiki_sess.site_conn.pages['Category:' + category]
         page.save("")
 
     return
@@ -196,12 +207,20 @@ the following elements:
 
   csv_input:     Path to the CSV input file.
 
-  toc_name:      Title for the generated Table of Contents page.
-
   cat_col:       The number of the column (if any) in the CSV file that
                  should be used to create a category for that row;
                  column numbering begins at 1, not 0.  Omit this, or
                  leave the value blank, to not use categories at all.
+
+  toc_name:      Title for the generated Table of Contents page.
+
+  title_tmpl:    A string into which the row number is substituted to
+                 create the title of each row's page.  Substitution is
+                 done at the first "{}" in the string.  For example, if
+                 title_tmpl "Entry_{}", then each page will be named
+                 "Entry_001", "Entry_002", etc.  The amount of left-side
+                 0-padding will be determined automatically by the
+                 number of rows in the CSV input.
 
   delimiter:     A single-char delimiter used to separate columns in
                  a CSV row.  If omitted, defaults to ','.
@@ -209,8 +228,6 @@ the following elements:
   quotechar:     A single-char quotechar used to wrap contents of a
                  single cell in the CSV file.  If omitted, defaults
                  to '"'.
-
-  page_title:    TBD
 
   path_to_api:   The API path under the URL; defaults to "/".  See also
                  http://mwclient.readthedocs.io/en/master/user/connecting.html.
@@ -231,11 +248,11 @@ it, but this script doesn't (currently) use it.
   username: wikibot
   password: wikibot1
   source_filename: /path/to/input.csv
-  toc_name: List_of_Proposals
+  toc_name: List_of_Entries
   cat_col: 5
   delimiter: ,
   quotechar: "
-  page_title: Proposal
+  title_tmpl: Entry_{}
 
 Page deletion support
 ---------------------
