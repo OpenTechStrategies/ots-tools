@@ -243,17 +243,19 @@ option and use this additional parameter in the config file:
                  the MediaWiki API for a list of pages.  This
                  change will make search_string obsolete.
 
-Troubleshooting
----------------
+Dependencies and Troubleshooting
+--------------------------------
 
-* Run time may be slower than you expect.
+* You will need to install the 'mwclient' Python library.
 
-  Creating 250 wiki pages takes about 5 minutes on localhost.  
-  Part of the reason for this is that the script does a page save
-  for every section within a page; see the TODO comment near the 
-  page.save() calls in the loop over cells for more.  We may look
-  into whether the 'mwclient' library offers a caching option, or
-  maybe we'll create the whole page and save it once at the end.
+  If you get an error that looks something like this:
+
+    Traceback (most recent call last):
+      File "./csv2wiki", line 27, in <module>
+        from xmwclient import Site
+    ImportError: No module named xmwclient
+
+  then do 'pip install mwclient' and try again.
 
 * If you run create/delete multiple times, you may need to run
   
@@ -262,7 +264,7 @@ Troubleshooting
   in your MediaWiki instance to link pages to their categories properly.
   That script takes about 10 minutes to run for a wiki with <300 pages.
   
-* If you get errors saving some pages, read this:
+* If you get errors saving some pages, it may be an anti-spam plugin.
   
   If your MediaWiki instance has Extension:SpamBlacklist enabled,
   then you may get errors when trying to create pages that contain
@@ -291,6 +293,15 @@ Troubleshooting
   
   That will let you save a page containing any URL.  (Things work
   similarly on the Email-whitelist page).
+
+* Run time may be slower than you expect.
+
+  Creating 250 wiki pages takes about 5 minutes on localhost.  
+  Part of the reason for this is that the script does a page save
+  for every section within a page; see the TODO comment near the 
+  page.save() calls in the loop over cells for more.  We may look
+  into whether the 'mwclient' library offers a caching option, or
+  maybe we'll create the whole page and save it once at the end.
 """)
 
 def parse_config_file(config_file):
