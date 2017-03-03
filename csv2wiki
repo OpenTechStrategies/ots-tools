@@ -180,7 +180,7 @@ def usage(errout=False):
 
 Basic usage:
 
-  $ csv2wiki -f CONFIG_FILE [--delete-matching=PATTERN]
+  $ csv2wiki -c CONFIG_FILE [ --delete-matching=PATTERN ]
 
 The CONFIG_FILE contains the wiki URL, login information, and various
 other run-time parameters.  It is in standard .ini file format, with
@@ -339,11 +339,11 @@ def main():
     """
     try:
         opts, args = getopt.getopt(sys.argv[1:], 
-                                   'h?d:f:',
+                                   'h?d:c:',
                                    ("help",
                                     "usage",
                                     "delete-matching=",
-                                    "file="))
+                                    "config="))
     except getopt.GetoptError as err:
         sys.stderr.write("ERROR: '%s'\n" % err)
         usage(errout=True)
@@ -358,7 +358,7 @@ def main():
             sys.exit(0)
         elif o in ("-d", "--delete-matching"):
             delete_matching = a
-        elif o in ("-f", "--file"):
+        elif o in ("-c", "--config"):
             filename = a
         else:
             sys.stderr.write("ERROR: unrecognized option '%s'\n" % o)
@@ -368,7 +368,7 @@ def main():
         sys.exit(2)
 
     if filename is None:
-        sys.stderr.write("ERROR: missing config file; use -f to supply it\n")
+        sys.stderr.write("ERROR: missing config file; use -c to supply it\n")
         usage(errout=True)
         sys.exit(2)
     else:
