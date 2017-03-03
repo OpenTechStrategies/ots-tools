@@ -18,11 +18,6 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-# It would be simple to change the main() function to accept a different
-# url via user input.
-#
-# TODO: add a wrapper class to take different wiki types
-
 import csv
 from mwclient import Site
 from mwclient import errors
@@ -85,6 +80,12 @@ class WikiSession:
             sys.exit(1)
 
 
+# TODO: create_pages() and delete_pages() are MediaWiki-specific right
+# now -- they just drive the 'mwclient' calls directly.  If we wanted
+# to support other wiki types, the way to do that would be to abstract
+# that stuff into new methods in WikiSession and select conditional
+# branches based on a new config parameter 'wiki_type'.
+
 def create_pages(wiki_sess):
     """Create one wiki page for each row in the CSV file corresponding
     to WikiSession WIKI_SESS.  The CSV must have a header row and at
@@ -128,12 +129,13 @@ def create_pages(wiki_sess):
                             categories.append(cell)
                     else:
                         cell_text = cell
-                        # TODO: it's probably bad practice to save each page
-                        # many times, and it's definitely slowing down the
-                        # script.
-                        #
-                        # What's the deal with save/edit/text?  Send
-                        # just one API request per page.
+                        # TODO: it's not great to save each page many
+                        # times, and it definitely slows things down.
+                        # It would be better to send just one API
+                        # request per page-save.  Does the 'mwclient'
+                        # library offer any kind of caching, so that
+                        # we can keep this code style while not being
+                        # penalized on performance?
                     try:
                         page.save(cell_text, section=cell_num, sectiontitle=header_array[cell_num])
                     except errors.APIError:
@@ -263,7 +265,7 @@ Typically, PATTERN will be similar to the page_title config element,
 since --delete-matching is most often used to delete pages originally
 created with this script.
 
-TODO: We will probably change --delete to just re-calculate page
+NOTE: We will probably change --delete to just re-calculate page
       titles based on the CSV input, instead of taking a PATTERN
       argument and then querying the MediaWiki API for a list of pages
       whose names match that PATTERN.  If we make this change, then
