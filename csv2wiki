@@ -138,6 +138,20 @@ def create_pages(wiki_sess):
                         # we can keep this code style while not being
                         # penalized on performance?
                     try:
+                        # TODO: regarding issue #4:
+                        # 
+                        # I'm not completely sure what's going on
+                        # here, but the first time you save a page
+                        # (i.e., the first section on the page), this
+                        # call succeeds, and subsequent sections
+                        # (i.e., cell_num >= 1) raise an exception,
+                        # thus requiring the section='new' retry.
+                        #
+                        # BUT, when the page is created with this
+                        # first section, the 'sectiontitle' named
+                        # argument below doesn't seem to have any
+                        # effect -- the section content appears, but
+                        # it's bare, not within any titled section.
                         page.save(cell_text, section=cell_num, sectiontitle=header_array[cell_num])
                     except errors.APIError:
                         try:
