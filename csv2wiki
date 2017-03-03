@@ -36,16 +36,16 @@ class WikiSession:
     """One CSV import session with a given user and a given wiki."""
     def __init__(self, config_obj):
         """Log in to this session, using parameters from CONFIG_OBJ."""
-        self.site_conn   = None
-        self.csv_file    = config_obj['source_filename']
-        self.wiki_url    = config_obj['wiki_url']
-        self.username    = config_obj['username']
-        self.password    = config_obj['password']
-        self.toc_name    = config_obj['toc_name']
-        self.cat_col     = int(config_obj.get('cat_col', 0))
-        self.delimiter   = config_obj.get('delimiter')
-        self.quote_char  = config_obj.get('quotechar')
-        self.path_to_api = config_obj.get('path_to_api')
+        self.site_conn        = None
+        self.csv_file         = config_obj['source_filename']
+        self.wiki_url         = config_obj['wiki_url']
+        self.username         = config_obj['username']
+        self.password         = config_obj['password']
+        self.toc_name         = config_obj['toc_name']
+        self.cat_col          = int(config_obj.get('cat_col', 0))
+        self.delimiter        = config_obj.get('delimiter')
+        self.quote_char       = config_obj.get('quotechar')
+        self.path_to_api      = config_obj.get('path_to_api')
 
         if self.path_to_api is None:
           self.path_to_api = "/"
