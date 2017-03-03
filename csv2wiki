@@ -135,19 +135,14 @@ def create_pages(wiki_sess):
                     try:
                         page.save(cell_text, section=cell_num, sectiontitle=header_array[cell_num])
                     except errors.APIError:
-                        page.save(cell_text, section='new', sectiontitle=header_array[cell_num])
-                    # TODO: need a generic 'except' case for if we
-                    # get an error we don't know how to handle
-                    # (i.e., something other than errors.APIError).
-                    # If that happens, this function should return
-                    # some value to its caller (which is main())
-                    # to indicate that an error has happened;
-                    # otherwise the return value should be None or
-                    # some other empty "everything is okay" flag.
-                    # In addition to setting a return-error flag
-                    # here, it would be okay to print to stderr
-                    # here something about the unhandled error.
-                                
+                        try:
+                            page.save(cell_text, section='new', sectiontitle=header_array[cell_num])
+                        except errors.APIError as err:
+                            sys.stderr.write("ERROR: unable to write page:\n" +
+                                             "'%s'" % err)
+                            sys.exit(1)
+                    # If anything else goes wrong, just throw the
+                    # exception up to caller.
                 cell_num += 1
 
         if row_num > 0:
@@ -161,7 +156,12 @@ def create_pages(wiki_sess):
     # generate the category pages
     for category in categories:
         page = wiki_sess.site_conn.pages['Category:' + category]
-        page.save("")
+        try:
+            page.save("")
+        except errors.APIError as err:
+            sys.stderr.write("ERROR: unable to create category page '"
+                             + category + "':\n       '" + err + "'")
+            sys.exit(1)
         print("CREATED CATEGORY: \"" + category + "\"")
 
     return
@@ -173,7 +173,11 @@ def delete_pages(wiki_sess, pat):
         # get as a page
         page = wiki_sess.site_conn.pages[result['title']]
         # delete with extreme prejudice
-        page.delete()
+        try:
+            page.delete()
+        except errors.APIError as err:
+            sys.stderr.write("ERROR: unable to delete page:\n      '%s'" % err)
+            sys.exit(1)
         print("DELETED PAGE: \"" + result['title'] + "\"")
 
     return
