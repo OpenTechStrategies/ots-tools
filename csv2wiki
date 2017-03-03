@@ -32,49 +32,56 @@ import ConfigParser
 # For exception matching.
 import requests
 
-def create_pages(config_obj):
-    """
-    Create one wiki page for each line in a CSV file supplied from the
-    configuration settings.  The CSV should have a header row and at
-    least one row of content.
+class WikiSession:
+    """One CSV import session with a given user and a given wiki."""
+    def __init__(self, config_obj):
+        """Log in to this session, using parameters from CONFIG_OBJ."""
+        self.site_conn   = None
+        self.csv_file    = config_obj['source_filename']
+        self.wiki_url    = config_obj['wiki_url']
+        self.username    = config_obj['username']
+        self.password    = config_obj['password']
+        self.toc_name    = config_obj['toc_name']
+        self.cat_col     = int(config_obj.get('cat_col', 0))
+        self.delimiter   = config_obj.get('delimiter')
+        self.quote_char  = config_obj.get('quotechar')
+        self.path_to_api = config_obj.get('path_to_api')
 
-    Connect to the wiki site using the url, username, and password given
-    in the configuration settings.
+        if self.path_to_api is None:
+          self.path_to_api = "/"
 
-    """
-    csv_file = config_obj['source_filename']
-    wiki_url = config_obj['wiki_url']
-    username = config_obj['username']
-    password = config_obj['password']
+        # Connect to the site.
+        try:
+            self.site_conn = Site(self.wiki_url.split("://"), path=self.path_to_api)
+        except requests.exceptions.HTTPError as err: 
+            sys.stderr.write("ERROR: failed to connect to wiki URL '%s'\n" % self.wiki_url)
+            sys.stderr.write("       Error details:\n")
+            sys.stderr.write("       ('%s')\n" % err)
+            sys.exit(1)
+    
+        try:
+            self.site_conn.login(self.username, self.password)
+        except errors.LoginError as err:
+            sys.stderr.write("ERROR: Unable to log in to wiki; "
+                             "check that username and password are correct.\n")
+            sys.stderr.write("       Error details:\n")
+            sys.stderr.write("       ('%s')\n" % err)
+            sys.exit(1)
 
-    path_to_api = config_obj.get('path_to_api')
-    if path_to_api is None:
-      path_to_api = "/"
 
-    try:
-        site = Site(wiki_url.split("://"), path=path_to_api)
-    except requests.exceptions.HTTPError as err: 
-        sys.stderr.write("ERROR: failed to connect to wiki URL '%s'\n" % wiki_url)
-        sys.stderr.write("       Error details:\n")
-        sys.stderr.write("       ('%s')\n" % err)
-        sys.exit(1)
+def create_pages(wiki_sess):
+    """Create one wiki page for each row in the CSV file corresponding
+    to WikiSession WIKI_SESS.  The CSV must have a header row and at
+    least one row of content."""
 
-    try:
-        site.login(username, password)
-    except errors.LoginError as err:
-        sys.stderr.write("ERROR: Unable to log in to wiki; "
-                         "check that username and password are correct.\n")
-        sys.stderr.write("       Error details:\n")
-        sys.stderr.write("       ('%s')\n" % err)
-        sys.exit(1)
-
-    toc_page = site.pages[config_obj['toc_name']]
     toc_text = ""
     categories = []
-    
+
     # read in csv
-    with open(csv_file, 'rb') as csvfile:
-        reader = csv.reader(csvfile, delimiter=config_obj['delimiter'], quotechar=config_obj['quotechar'])
+    with open(wiki_sess.csv_file, 'rb') as csvfile:
+        reader = csv.reader(csvfile, 
+                            delimiter=wiki_sess.delimiter, 
+                            quotechar=wiki_sess.quote_char)
         is_header = True
         row_num = 0
         for row in reader:
@@ -91,17 +98,17 @@ def create_pages(config_obj):
                 for cell in row:
                     if cell_num == 0:
                         # For this new line, generate a mediawiki page
-                        # TODO: use the config obj properly to make the title
+                        # TODO: determine title dynamically
                         title = 'Proposal_'+ str(row_num) + ': ' + cell
                         print("CREATING: " + title)
-                        page = site.pages[title]
+                        page = wiki_sess.site_conn.pages[title]
                         # Add the new page to the list of pages
                         toc_text += '* [[' + title + ']] \n'
                         # Set the contents of each cell to their own section.
                     if cell is not "":
                         # A section can only be created with some text
                         #
-                        if cell_num == int(config_obj['cat_col']):
+                        if cell_num == wiki_sess.cat_col:
                             # For the last column, create a category (NOTE:
                             # this is overly customized to a certain set of
                             # CSVs; feel free to remove this conditional for
@@ -141,40 +148,25 @@ def create_pages(config_obj):
             row_num += 1
         
     # create the TOC page.
+    toc_page = wiki_sess.site_conn.pages[wiki_sess.toc_name]
     toc_page.save(toc_text)
     
     # generate the category pages
     for category in categories:
         print("CREATING CATEGORY: " + category)
         page_title = 'Category:' + category
-        page = site.pages[page_title]
+        page = wiki_sess.site_conn.pages[page_title]
         page.save("")
 
     return
 
-def delete_pages(config_obj):
-    """
-    Delete wiki pages matching a search string given in the configuration
-    file.  Connect to the site using the url, username, and password in
-    that file.
-    """
-    wiki_url = config_obj['wiki_url']
-    username = config_obj['username']
-    password = config_obj['password']
-    search_string=config_obj['search_string']
-    
-    path_to_api = config_obj.get('path_to_api')
-    if path_to_api is None:
-      path_to_api = "/"
-
-    site = Site(wiki_url.split("://"), path=path_to_api,)
-    site.login(username, password)
-    
-    search_result = site.search(search_string)
+def delete_pages(wiki_sess, pat):
+    """Delete wiki pages in WIKI_SESS's wiki whose names match pattern PAT."""
+    search_result = wiki_sess.site_conn.search(pat)
     for result in search_result:
         # get as a page
         print("DELETING: " + result['title'])
-        page = site.pages[result['title']]
+        page = wiki_sess.site_conn.pages[result['title']]
         # delete with extreme prejudice
         page.delete()
 
@@ -188,7 +180,7 @@ def usage(errout=False):
 
 Basic usage:
 
-  $ csv2wiki -f CONFIG_FILE CSV_FILE 
+  $ csv2wiki -f CONFIG_FILE [--delete-matching=PATTERN]
 
 The CONFIG_FILE contains the wiki URL, login information, and various
 other run-time parameters.  It is in standard .ini file format, with
@@ -250,21 +242,20 @@ Page deletion support
 
 This script also supports batch deletion of pages, since a possible
 outcome of initial runs is that you have a bunch of pages in your wiki
-that turn out to be not ready.  To remove them, pass the "--delete"
-option and use this additional parameter in the config file:
+that turn out to be not ready.  Use the "--delete-matching PATTERN"
+option to remove them.  All pages whose names match PATTERN will be 
+deleted (and no pages will be created).
 
-  search_string: When used with the --delete option, delete all
-                 pages whose names match this string.  This
-                 parameter has no effect without "--delete".
-                 Typically, search_string will be similar to
-                 page_title, since it is being used to delete
-                 pages originally created with this script.
+Typically, PATTERN will be similar to the page_title config element,
+since --delete-matching is most often used to delete pages originally
+created with this script.
 
-                 TODO: We will probably change --delete to just
-                 re-calculate page titles based on the CSV
-                 input, instead of using search_string to query
-                 the MediaWiki API for a list of pages.  This
-                 change will make search_string obsolete.
+TODO: We will probably change --delete to just re-calculate page
+      titles based on the CSV input, instead of taking a PATTERN
+      argument and then querying the MediaWiki API for a list of pages
+      whose names match that PATTERN.  If we make this change, then
+      the --delete-matching=PATTERN option will become just --delete
+      with no argument.
 
 Dependencies and Troubleshooting
 --------------------------------
@@ -347,21 +338,26 @@ def main():
 
     """
     try:
-        opts, args = getopt.getopt(sys.argv[1:], 'h?df:', ("help", "usage", "delete", "file="))
+        opts, args = getopt.getopt(sys.argv[1:], 
+                                   'h?d:f:',
+                                   ("help",
+                                    "usage",
+                                    "delete-matching=",
+                                    "file="))
     except getopt.GetoptError as err:
         sys.stderr.write("ERROR: '%s'\n" % err)
         usage(errout=True)
         sys.exit(2)
 
     filename = None
-    delete = False
+    delete_matching = None
     bad_opt_seen = False
     for o, a in opts:
         if o in ("-h", "-?", "--help", "--usage"):
             usage()
             sys.exit(0)
-        elif o in ("-d", "--delete"):
-            delete = True
+        elif o in ("-d", "--delete-matching"):
+            delete_matching = a
         elif o in ("-f", "--file"):
             filename = a
         else:
@@ -378,16 +374,18 @@ def main():
     else:
         config_settings = parse_config_file(filename)
 
-    if delete:
+    wiki_sess = WikiSession(config_settings)
+
+    if delete_matching is not None:
         try:
-            delete_pages(config_settings)
+            delete_pages(wiki_sess, delete_matching)
         except IndexError as err:
             sys.stderr.write("ERROR: '%s'\n" % err)
             usage(errout=True)
             sys.exit(1)
     else:
         try:
-            create_pages(config_settings)
+            create_pages(wiki_sess)
         except IndexError as err:
             sys.stderr.write("ERROR: '%s'\n" % err)
             usage(errout=True)
