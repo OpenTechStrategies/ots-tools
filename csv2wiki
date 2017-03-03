@@ -35,7 +35,8 @@ import requests
 class WikiSession:
     """One CSV import session with a given user and a given wiki."""
     def __init__(self, csv_file, config_obj):
-        """Log in to this session, using parameters from CONFIG_OBJ."""
+        """Log in to a wiki session to create pages based on CSV_FILE.
+        Take login parameters from CONFIG_OBJ."""
         self.site_conn        = None  # will be a mwclient Site object
         self.csv_input        = None  # will be csv.reader object
         self.row_count        = None  # will be num rows not counting header
