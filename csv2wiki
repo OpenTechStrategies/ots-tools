@@ -51,7 +51,7 @@ class WikiSession:
           self.path_to_api = "/"
 
         # First count the rows, so we can format row numbers properly.
-        csv_fh = open(config_obj['source_filename'], 'rb')
+        csv_fh = open(config_obj['csv_file'], 'rb')
         self.csv_input = csv.reader(csv_fh,
                                     delimiter=config_obj.get('delimiter'),
                                     quotechar=config_obj.get('quotechar'))
@@ -60,7 +60,7 @@ class WikiSession:
         csv_fh.close()
 
         # Reset the reader for our callers.
-        csv_fh = open(config_obj['source_filename'], 'rb')
+        csv_fh = open(config_obj['csv_file'], 'rb')
         self.csv_input = csv.reader(csv_fh,
                                     delimiter=config_obj.get('delimiter'),
                                     quotechar=config_obj.get('quotechar'))
@@ -242,7 +242,7 @@ it, but this script doesn't (currently) use it.
   wiki_url: http://localhost/mediawiki
   username: wikibot
   password: wikibot1
-  source_filename: /path/to/input.csv
+  csv_file: /path/to/input.csv
   toc_name: List_of_Entries
   cat_col: 5
   delimiter: ,
