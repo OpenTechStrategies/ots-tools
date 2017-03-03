@@ -29,6 +29,9 @@ from mwclient import errors
 import getopt, sys
 import ConfigParser
 
+# For exception matching.
+import requests
+
 def create_pages(config_obj):
     """
     Create one wiki page for each line in a CSV file supplied from the
@@ -45,9 +48,23 @@ def create_pages(config_obj):
     password = config_obj['password']
     site_protocol = config_obj['site_protocol']
 
-    site = Site((site_protocol, site_url), path=config_obj['path_to_api'],)
-    site.login(username, password)
-    
+    try:
+        site = Site((site_protocol, site_url), path=config_obj['path_to_api'],)
+    except requests.exceptions.HTTPError as err: 
+        sys.stderr.write("ERROR: failed to connect to wiki URL '%s'\n" % (site_protocol + "://" + site_url))
+        sys.stderr.write("       Error details:\n")
+        sys.stderr.write("       ('%s')\n" % err)
+        sys.exit(1)
+
+    try:
+        site.login(username, password)
+    except errors.LoginError as err:
+        sys.stderr.write("ERROR: Unable to log in to wiki; "
+                         "check that username and password are correct.\n")
+        sys.stderr.write("       Error details:\n")
+        sys.stderr.write("       ('%s')\n" % err)
+        sys.exit(1)
+
     toc_page = site.pages[config_obj['toc_name']]
     toc_text = ""
     categories = []
