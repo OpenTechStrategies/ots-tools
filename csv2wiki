@@ -328,15 +328,16 @@ def create_pages(wiki_sess):
     toc_page.save(toc_text, std_edit_msg)
     
     # generate the category pages
-    for category in categories:
-        page = wiki_sess.site_conn.pages['Category:' + category]
-        try:
-            page.save("", std_edit_msg)
-        except errors.APIError as err:
-            sys.stderr.write("ERROR: unable to create category page '"
-                             + category + "':\n       '" + err + "'")
-            sys.exit(1)
-        print("CREATED CATEGORY: \"" + category + "\"")
+    if wiki_sess.cat_col:
+        for category in categories:
+            page = wiki_sess.site_conn.pages['Category:' + category]
+            try:
+                page.save("", std_edit_msg)
+            except errors.APIError as err:
+                sys.stderr.write("ERROR: unable to create category page '"
+                                 + category + "':\n       '" + err + "'")
+                sys.exit(1)
+            print("CREATED CATEGORY: \"" + category + "\"")
 
     return
 
