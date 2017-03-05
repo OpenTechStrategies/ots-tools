@@ -18,6 +18,165 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
+__doc__ = """\
+Convert each entry (row) in a CSV file to a MediaWiki page.
+
+Basic usage:
+
+  $ csv2wiki -c CONFIG_FILE [ --delete-matching=PATTERN ] CSV_FILE
+
+The CONFIG_FILE contains the wiki URL, login information, and various
+other run-time parameters.  It is in standard .ini file format, with
+the following elements:
+
+  wiki_url:            The url of the wiki, e.g. "http://localhost/mediawiki",
+                       "https://www.example.com/mwiki", etc.
+
+  username:            User account with write/create permission in the wiki.
+                       (With --delete, user needs page-delete permission.)
+
+  password:            The wiki password corresponding to the username.
+
+  toc_name:            Title for the generated Table of Contents page.
+
+  title_tmpl:          String into which the row number is substituted
+                       to create the title of each row's page.
+                       Substitution is done at the first "{}" in the
+                       string.  For example, if title_tmpl "Entry_{}",
+                       then each page will be named "Entry_001",
+                       "Entry_002", etc.  The amount of left-side
+                       0-padding will be determined automatically by
+                       the number of rows in the CSV input.
+
+  cat_col:             The number of the column (if any) in the CSV
+                       file that should be used to create a category
+                       for that row; column numbering begins at 1, not
+                       0.  Omit this, or leave the value blank, to not
+                       use categories at all.
+
+  listing_suffix_col:  The number of the column (if any) in the CSV
+                       file whose value should be appended to the page
+                       title, after a colon and a space, when the
+                       page's name appears in a listing such as a
+                       table of contents.  (We wish it could also be
+                       used for Category pages, but the way MediaWiki
+                       generates Category pages does not allow that.)
+                       Omit this, or leave the value blank, to not use
+                       any listing suffix at all.
+
+  delimiter:           A single-char delimiter used to separate columns
+                       in a CSV row.  If omitted, defaults to ','.
+
+  quotechar:           A single-char quotechar used to wrap contents of
+                       a single cell in the CSV file.  If omitted, 
+                       defaults to '"'.
+
+  path_to_api:         The API path under the URL; defaults to "/"; see
+                       mwclient.readthedocs.io/en/master/user/connecting.html.
+                       Note that on Wikipedia.org, this would be "/w/", 
+                       but in most non-Wikipedia instances of MediaWiki,
+                       the default "/" is more likely.  So if you're using
+                       that default, you don't have to specify this at all.
+
+Example config file
+-------------------
+
+Here is an example config file:
+
+  [default]
+  wiki_url: http://localhost/mediawiki
+  username: wikibot
+  password: wikibot1
+  title_tmpl: Entry_{}
+  toc_name: List_of_Entries
+  cat_col: 5
+  listing_suffix_col: 1
+
+The "[default]" section name at the top must be present.  The .ini
+format always has sections, and for the sake of forward compatibility
+this script requires the one section's name to be "default".
+
+Page deletion support
+---------------------
+
+This script also supports batch deletion of pages, since a possible
+outcome of initial runs is that you have a bunch of pages in your wiki
+that turn out to be not ready.  Use the "--delete-matching PATTERN"
+option to remove them.  All pages whose names match PATTERN will be 
+deleted (and no pages will be created).
+
+Typically, PATTERN will be similar to the title_tmpl config element,
+since --delete-matching is most often used to delete pages originally
+created with this script.
+
+NOTE: We will probably change --delete to just re-calculate page
+      titles based on the CSV input, instead of taking a PATTERN
+      argument and then querying the MediaWiki API for a list of pages
+      whose names match that PATTERN.  If we make this change, then
+      the --delete-matching=PATTERN option will become just --delete
+      with no argument.
+
+Dependencies and Troubleshooting
+--------------------------------
+
+* You will need to install the 'mwclient' Python library.
+
+  If you get an error that looks something like this:
+
+    Traceback (most recent call last):
+      File "./csv2wiki", line 27, in <module>
+        from xmwclient import Site
+    ImportError: No module named xmwclient
+
+  then do 'pip install mwclient' and try again.
+
+* If you run create/delete multiple times, you may need to run
+  
+    $ php maintenance/rebuildall.php
+  
+  in your MediaWiki instance to link pages to their categories properly.
+  That script takes about 10 minutes to run for a wiki with <300 pages.
+  
+* If you get errors saving some pages, it may be an anti-spam plugin.
+  
+  If your MediaWiki instance has Extension:SpamBlacklist enabled,
+  then you may get errors when trying to create pages that contain
+  certain kinds of URLs or email addresses (namely, URLs or email
+  addresses that SpamBlacklist thinks look spammy). 
+  
+  One solution is to just turn off Extension:SpamBlacklist entirely.
+  But even if you don't have that kind of administrative access,
+  you might still have enough access to *configure* the extension, 
+  in which case you can whitelist everything via a catchall regexp.
+  Visit one or of of these pages:
+  
+    https://mywiki.example.com/index.php?title=MediaWiki:Spam-whitelist
+    https://mywiki.example.com/index.php?title=MediaWiki:Email-whitelist
+  
+  You'll see a commented-out explanation of how the whitelist works.
+  Just add a line with the regular expression ".*", as in this example:
+  
+    # External URLs matching this list will *not* be blocked even if they would
+    # have been blocked by blacklist entries.
+    #
+    # Syntax is as follows:
+    #   * Everything from a "#" character to the end of the line is a comment
+    #   * Every non-blank line is a regex fragment which will only match hosts inside URLs
+    .*
+  
+  That will let you save a page containing any URL.  (Things work
+  similarly on the Email-whitelist page).
+
+* Run time may be slower than you expect.
+
+  Creating 250 wiki pages takes about 5 minutes on localhost.  
+  Part of the reason for this is that the script does a page save
+  for every section within a page; see the TODO comment near the 
+  page.save() calls in the loop over cells for more.  We may look
+  into whether the 'mwclient' library offers a caching option, or
+  maybe we'll create the whole page and save it once at the end.
+"""
+
 import csv
 from mwclient import Site
 from mwclient import errors
@@ -201,163 +360,7 @@ def usage(errout=False):
     """Print a message explaining how to use this script.
     Print to stdout, unless ERROUT, in which case print to stderr."""
     out = sys.stderr if errout else sys.stdout
-    out.write("""Convert each entry (row) in a CSV file to a MediaWiki page.
-
-Basic usage:
-
-  $ csv2wiki -c CONFIG_FILE [ --delete-matching=PATTERN ] CSV_FILE
-
-The CONFIG_FILE contains the wiki URL, login information, and various
-other run-time parameters.  It is in standard .ini file format, with
-the following elements:
-
-  wiki_url:            The url of the wiki, e.g. "http://localhost/mediawiki",
-                       "https://www.example.com/mwiki", etc.
-
-  username:            User account with write/create permission in the wiki.
-                       (With --delete, user needs page-delete permission.)
-
-  password:            The wiki password corresponding to the username.
-
-  toc_name:            Title for the generated Table of Contents page.
-
-  title_tmpl:          String into which the row number is substituted
-                       to create the title of each row's page.
-                       Substitution is done at the first "{}" in the
-                       string.  For example, if title_tmpl "Entry_{}",
-                       then each page will be named "Entry_001",
-                       "Entry_002", etc.  The amount of left-side
-                       0-padding will be determined automatically by
-                       the number of rows in the CSV input.
-
-  cat_col:             The number of the column (if any) in the CSV
-                       file that should be used to create a category
-                       for that row; column numbering begins at 1, not
-                       0.  Omit this, or leave the value blank, to not
-                       use categories at all.
-
-  listing_suffix_col:  The number of the column (if any) in the CSV
-                       file whose value should be appended to the page
-                       title, after a colon and a space, when the
-                       page's name appears in a listing such as a
-                       table of contents.  (We wish it could also be
-                       used for Category pages, but the way MediaWiki
-                       generates Category pages does not allow that.)
-                       Omit this, or leave the value blank, to not use
-                       any listing suffix at all.
-
-  delimiter:           A single-char delimiter used to separate columns
-                       in a CSV row.  If omitted, defaults to ','.
-
-  quotechar:           A single-char quotechar used to wrap contents of
-                       a single cell in the CSV file.  If omitted, 
-                       defaults to '"'.
-
-  path_to_api:         The API path under the URL; defaults to "/"; see
-                       mwclient.readthedocs.io/en/master/user/connecting.html.
-                       Note that on Wikipedia.org, this would be "/w/", 
-                       but in most non-Wikipedia instances of MediaWiki,
-                       the default "/" is more likely.  So if you're using
-                       that default, you don't have to specify this at all.
-
-Example config file
--------------------
-
-Here is an example config file:
-
-  [default]
-  wiki_url: http://localhost/mediawiki
-  username: wikibot
-  password: wikibot1
-  title_tmpl: Entry_{}
-  toc_name: List_of_Entries
-  cat_col: 5
-  listing_suffix_col: 1
-
-The "[default]" section name at the top must be present.  The .ini
-format always has sections, and for the sake of forward compatibility
-this script requires the one section's name to be "default".
-
-Page deletion support
----------------------
-
-This script also supports batch deletion of pages, since a possible
-outcome of initial runs is that you have a bunch of pages in your wiki
-that turn out to be not ready.  Use the "--delete-matching PATTERN"
-option to remove them.  All pages whose names match PATTERN will be 
-deleted (and no pages will be created).
-
-Typically, PATTERN will be similar to the title_tmpl config element,
-since --delete-matching is most often used to delete pages originally
-created with this script.
-
-NOTE: We will probably change --delete to just re-calculate page
-      titles based on the CSV input, instead of taking a PATTERN
-      argument and then querying the MediaWiki API for a list of pages
-      whose names match that PATTERN.  If we make this change, then
-      the --delete-matching=PATTERN option will become just --delete
-      with no argument.
-
-Dependencies and Troubleshooting
---------------------------------
-
-* You will need to install the 'mwclient' Python library.
-
-  If you get an error that looks something like this:
-
-    Traceback (most recent call last):
-      File "./csv2wiki", line 27, in <module>
-        from xmwclient import Site
-    ImportError: No module named xmwclient
-
-  then do 'pip install mwclient' and try again.
-
-* If you run create/delete multiple times, you may need to run
-  
-    $ php maintenance/rebuildall.php
-  
-  in your MediaWiki instance to link pages to their categories properly.
-  That script takes about 10 minutes to run for a wiki with <300 pages.
-  
-* If you get errors saving some pages, it may be an anti-spam plugin.
-  
-  If your MediaWiki instance has Extension:SpamBlacklist enabled,
-  then you may get errors when trying to create pages that contain
-  certain kinds of URLs or email addresses (namely, URLs or email
-  addresses that SpamBlacklist thinks look spammy). 
-  
-  One solution is to just turn off Extension:SpamBlacklist entirely.
-  But even if you don't have that kind of administrative access,
-  you might still have enough access to *configure* the extension, 
-  in which case you can whitelist everything via a catchall regexp.
-  Visit one or of of these pages:
-  
-    https://mywiki.example.com/index.php?title=MediaWiki:Spam-whitelist
-    https://mywiki.example.com/index.php?title=MediaWiki:Email-whitelist
-  
-  You'll see a commented-out explanation of how the whitelist works.
-  Just add a line with the regular expression ".*", as in this example:
-  
-    # External URLs matching this list will *not* be blocked even if they would
-    # have been blocked by blacklist entries.
-    #
-    # Syntax is as follows:
-    #   * Everything from a "#" character to the end of the line is a comment
-    #   * Every non-blank line is a regex fragment which will only match hosts inside URLs
-    .*
-  
-  That will let you save a page containing any URL.  (Things work
-  similarly on the Email-whitelist page).
-
-* Run time may be slower than you expect.
-
-  Creating 250 wiki pages takes about 5 minutes on localhost.  
-  Part of the reason for this is that the script does a page save
-  for every section within a page; see the TODO comment near the 
-  page.save() calls in the loop over cells for more.  We may look
-  into whether the 'mwclient' library offers a caching option, or
-  maybe we'll create the whole page and save it once at the end.
-""")
+    out.write(__doc__)
 
 def parse_config_file(config_file):
     """Return a dictionary mapping fields in CONFIG_FILE to their values."""
