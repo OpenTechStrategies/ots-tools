@@ -27,7 +27,7 @@ Basic usage:
 
 The CONFIG_FILE contains the wiki URL, login information, and various
 other run-time parameters.  It is in standard .ini file format, with
-the following elements:
+a sole "[default]" section and the following elements in that section:
 
   wiki_url:            The url of the wiki, e.g. "http://localhost/mediawiki",
                        "https://www.example.com/mwiki", etc.
@@ -42,7 +42,7 @@ the following elements:
   title_tmpl:          String into which the row number is substituted
                        to create the title of each row's page.
                        Substitution is done at the first "{}" in the
-                       string.  For example, if title_tmpl "Entry_{}",
+                       string.  For example, if title_tmpl is "Entry_{}",
                        then each page will be named "Entry_001",
                        "Entry_002", etc.  The amount of left-side
                        0-padding will be determined automatically by
