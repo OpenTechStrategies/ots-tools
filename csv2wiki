@@ -357,7 +357,20 @@ def parse_config_file(config_file):
     # the 'default' section name every time they access a field.
     config_obj = {}
     config = ConfigParser.ConfigParser()
-    config.read(config_file)
+    parsed_files = config.read(config_file)
+    # ConfigParser.read() returns the number of files read, and if
+    # some of them aren't present, it doesn't raise any exceptions
+    # about that, it just moves on to try the next one in the list. 
+    # (Yes, one could pass it a list of files instead of a single
+    # filename.)  Because of this unusual behavior, explained more in
+    # https://docs.python.org/2/library/configparser.html, we can't
+    # count on an exception being raised and therefore must manually
+    # check the returned list instead.
+    if len(parsed_files) == 0:
+        raise IOError("failed to read config file '%s'" % config_file)
+    elif parsed_files[0] != config_file:
+        raise IOError("parsed unexpected config file instead of '%s'" % config_file)
+    # We have successfully read the config file, so parse it.
     for option in config.options('default'):
         config_obj[option] = config.get('default', option)
     return config_obj
