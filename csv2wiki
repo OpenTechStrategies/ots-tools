@@ -41,6 +41,7 @@ class WikiSession:
         self.title_tmpl          = config_obj['title_tmpl']
         self.toc_name            = config_obj['toc_name']
         self.cat_col             = int(config_obj.get('cat_col', 0))
+        self.listing_suffix_col  = int(config_obj.get('listing_suffix_col', 0))
         self.path_to_api         = config_obj.get('path_to_api')
 
         if self.path_to_api is None:
@@ -106,6 +107,7 @@ def create_pages(wiki_sess):
         page_name = None
         page_title = None
         page_text = ""
+        listing_suffix = None
         if is_header:
             # if this is the first row, save headers
             header_array = []
@@ -116,25 +118,32 @@ def create_pages(wiki_sess):
             # Looping over the cells in the row.  Name the sections
             # according to headers.
             cell_num = 0
+            cell_text = None
             for cell in row:
                 if cell_num == 0:
                     # For this new line, generate a mediawiki page
                     row_num_str = row_format.format(row_num)
                     page_name = wiki_sess.title_tmpl.format(row_num_str)
-                    page_title = wiki_sess.title_tmpl.format(row_num_str) + ': ' + cell
                     page = wiki_sess.site_conn.pages[page_name]
-                    # Add the new page to the list of pages
-                    toc_text += '* [[' + page_name + '|' + page_title + ']] \n'
                     # Set the contents of each cell to their own section.
                 if cell is not "":
                     # A section can only be created with some text
                     # 
+                    cell_text = cell
+                    if cell_num + 1 == wiki_sess.listing_suffix_col:
+                        listing_suffix = cell_text
                     if cell_num + 1 == wiki_sess.cat_col:
+                        # If there were a way to use the
+                        # listing_suffix in the Category pages too,
+                        # then we would defer this until we knew that
+                        # all the cells (columns) had been seen.  But
+                        # that's now how Categories work in MediaWiki,
+                        # so we'll just have to live with the fact
+                        # that the TOC will show the listing suffix
+                        # but the relevant Category page will not.
                         cell_text = '[[Category:' + cell + ']]'
                         if cell not in categories:
                             categories.append(cell)
-                    else:
-                        cell_text = cell
                     page_text += "== " + header_array[cell_num] + " =="
                     page_text += "\n\n"
                     page_text += cell_text
@@ -145,6 +154,12 @@ def create_pages(wiki_sess):
             except errors.APIError as err:
                 sys.stderr.write("ERROR: unable to write page:\n" + "'%s'" % err)
                 sys.exit(1)
+            if listing_suffix is not None:
+                page_title = page_name + ': ' + listing_suffix
+                toc_text += '* [[' + page_name + '|' + page_title + ']]\n'
+            else:
+                page_title = page_name
+                toc_text += '* [[' + page_name + ']]\n'
             if row_num > 0:
                 print("CREATED PAGE: \"" + page_title + "\"")
         row_num += 1
@@ -221,6 +236,16 @@ the following elements:
                        0.  Omit this, or leave the value blank, to not
                        use categories at all.
 
+  listing_suffix_col:  The number of the column (if any) in the CSV
+                       file whose value should be appended to the page
+                       title, after a colon and a space, when the
+                       page's name appears in a listing such as a
+                       table of contents.  (We wish it could also be
+                       used for Category pages, but the way MediaWiki
+                       generates Category pages does not allow that.)
+                       Omit this, or leave the value blank, to not use
+                       any listing suffix at all.
+
   delimiter:           A single-char delimiter used to separate columns
                        in a CSV row.  If omitted, defaults to ','.
 
@@ -247,6 +272,7 @@ Here is an example config file:
   title_tmpl: Entry_{}
   toc_name: List_of_Entries
   cat_col: 5
+  listing_suffix_col: 1
 
 The "[default]" section name at the top must be present.  The .ini
 format always has sections, and for the sake of forward compatibility
@@ -261,7 +287,7 @@ that turn out to be not ready.  Use the "--delete-matching PATTERN"
 option to remove them.  All pages whose names match PATTERN will be 
 deleted (and no pages will be created).
 
-Typically, PATTERN will be similar to the page_title config element,
+Typically, PATTERN will be similar to the title_tmpl config element,
 since --delete-matching is most often used to delete pages originally
 created with this script.
 
