@@ -255,17 +255,19 @@ the following elements:
 Example config file
 -------------------
 
-In this example config file, the "[csv2wiki]" section name at the top
-is ignored -- it could be any value; the .ini format insists on
-it, but this script doesn't (currently) use it.
+Here is an example config file:
 
-  [csv2wiki]
+  [default]
   wiki_url: http://localhost/mediawiki
   username: wikibot
   password: wikibot1
   title_tmpl: Entry_{}
   toc_name: List_of_Entries
   cat_col: 5
+
+The "[default]" section name at the top must be present.  The .ini
+format always has sections, and for the sake of forward compatibility
+this script requires the one section's name to be "default".
 
 Page deletion support
 ---------------------
@@ -349,16 +351,15 @@ Dependencies and Troubleshooting
 """)
 
 def parse_config_file(config_file):
-    """
-    Parse a CONFIG_FILE into configuration parameters for use in other functions.
-    """
+    """Return a dictionary mapping fields in CONFIG_FILE to their values."""
+    # Return a newly-created dictionary, rather than the ConfigParser
+    # object itself, because we want to avoid callers having to pass
+    # the 'default' section name every time they access a field.
     config_obj = {}
     config = ConfigParser.ConfigParser()
     config.read(config_file)
-    for section in config.sections():
-        for option in config.options(section):
-            config_obj[option] = config.get(section, option)
-
+    for option in config.options('default'):
+        config_obj[option] = config.get('default', option)
     return config_obj
 
 def main():
