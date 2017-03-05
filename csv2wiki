@@ -32,16 +32,16 @@ class WikiSession:
     def __init__(self, csv_file, config_obj):
         """Log in to a wiki session to create pages based on CSV_FILE.
         Take login parameters from CONFIG_OBJ."""
-        self.site_conn        = None  # will be a mwclient Site object
-        self.csv_input        = None  # will be csv.reader object
-        self.row_count        = None  # will be num rows not counting header
-        self.wiki_url         = config_obj['wiki_url']
-        self.username         = config_obj['username']
-        self.password         = config_obj['password']
-        self.title_tmpl       = config_obj['title_tmpl']
-        self.toc_name         = config_obj['toc_name']
-        self.cat_col          = int(config_obj.get('cat_col', 0))
-        self.path_to_api      = config_obj.get('path_to_api')
+        self.site_conn           = None  # will be a mwclient Site object
+        self.csv_input           = None  # will be csv.reader object
+        self.row_count           = None  # will be num rows not counting header
+        self.wiki_url            = config_obj['wiki_url']
+        self.username            = config_obj['username']
+        self.password            = config_obj['password']
+        self.title_tmpl          = config_obj['title_tmpl']
+        self.toc_name            = config_obj['toc_name']
+        self.cat_col             = int(config_obj.get('cat_col', 0))
+        self.path_to_api         = config_obj.get('path_to_api')
 
         if self.path_to_api is None:
           self.path_to_api = "/"
@@ -196,42 +196,44 @@ The CONFIG_FILE contains the wiki URL, login information, and various
 other run-time parameters.  It is in standard .ini file format, with
 the following elements:
 
-  wiki_url:      The url of the wiki, e.g. "http://localhost/mediawiki",
-                 "https://www.example.com/mwiki", etc.
+  wiki_url:            The url of the wiki, e.g. "http://localhost/mediawiki",
+                       "https://www.example.com/mwiki", etc.
 
-  username:      User account that has write/create permission in the wiki.
-                 (With --delete option, user needs page-delete permission.)
+  username:            User account with write/create permission in the wiki.
+                       (With --delete, user needs page-delete permission.)
 
-  password:      The wiki password corresponding to the username.
+  password:            The wiki password corresponding to the username.
 
-  toc_name:      Title for the generated Table of Contents page.
+  toc_name:            Title for the generated Table of Contents page.
 
-  title_tmpl:    A string into which the row number is substituted to
-                 create the title of each row's page.  Substitution is
-                 done at the first "{}" in the string.  For example, if
-                 title_tmpl "Entry_{}", then each page will be named
-                 "Entry_001", "Entry_002", etc.  The amount of left-side
-                 0-padding will be determined automatically by the
-                 number of rows in the CSV input.
+  title_tmpl:          String into which the row number is substituted
+                       to create the title of each row's page.
+                       Substitution is done at the first "{}" in the
+                       string.  For example, if title_tmpl "Entry_{}",
+                       then each page will be named "Entry_001",
+                       "Entry_002", etc.  The amount of left-side
+                       0-padding will be determined automatically by
+                       the number of rows in the CSV input.
 
-  cat_col:       The number of the column (if any) in the CSV file that
-                 should be used to create a category for that row;
-                 column numbering begins at 1, not 0.  Omit this, or
-                 leave the value blank, to not use categories at all.
+  cat_col:             The number of the column (if any) in the CSV
+                       file that should be used to create a category
+                       for that row; column numbering begins at 1, not
+                       0.  Omit this, or leave the value blank, to not
+                       use categories at all.
 
-  delimiter:     A single-char delimiter used to separate columns in
-                 a CSV row.  If omitted, defaults to ','.
+  delimiter:           A single-char delimiter used to separate columns
+                       in a CSV row.  If omitted, defaults to ','.
 
-  quotechar:     A single-char quotechar used to wrap contents of a
-                 single cell in the CSV file.  If omitted, defaults
-                 to '"'.
+  quotechar:           A single-char quotechar used to wrap contents of
+                       a single cell in the CSV file.  If omitted, 
+                       defaults to '"'.
 
-  path_to_api:   The API path under the URL; defaults to "/".  See also
-                 http://mwclient.readthedocs.io/en/master/user/connecting.html.
-                 Note that on Wikipedia.org, this would be "/w/", but in
-                 most non-Wikipedia instances of MediaWiki, the default
-                 "/" is more likely.  So if you're using that default, 
-                 you don't have to specify this at all.
+  path_to_api:         The API path under the URL; defaults to "/"; see
+                       mwclient.readthedocs.io/en/master/user/connecting.html.
+                       Note that on Wikipedia.org, this would be "/w/", 
+                       but in most non-Wikipedia instances of MediaWiki,
+                       the default "/" is more likely.  So if you're using
+                       that default, you don't have to specify this at all.
 
 Example config file
 -------------------
