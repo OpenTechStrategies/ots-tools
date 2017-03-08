@@ -19,7 +19,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 __doc__ = """\
-Convert each entry (row) in a CSV file to a MediaWiki page.
+Convert each entry (row) in a UTF-8 CSV file to a MediaWiki page.
 
 Basic usage:
 
@@ -39,30 +39,33 @@ a sole "[default]" section and the following elements in that section:
 
   toc_name:            Title for the generated Table of Contents page.
 
-  title_tmpl:          String into which the row number is substituted
-                       to create the title of each row's page.
-                       Substitution is done at the first "{}" in the
-                       string.  For example, if title_tmpl is "Entry_{}",
-                       then each page will be named "Entry_001",
-                       "Entry_002", etc.  The amount of left-side
-                       0-padding will be determined automatically by
-                       the number of rows in the CSV input.
+  title_tmpl:          Template into which selected column values from
+                       a row are substituted to create the title of
+                       each row's page.  Columns are specified with
+                       "{N}" in the string, where N is a column number.
+
+                       For example, if title_tmpl is "Entry_{1}_{3}",
+                       column 1's value is "foo", and column 2's value
+                       is "bar", then the page title for this row will
+                       be "Entry_foo_bar".
+
+                       *** NOTE: *** The titles generated this way
+                       must be unique.  Typically, you ensure this in
+                       the input by making sure that at least one of
+                       the columns is some kind of unique identifying
+                       number or something like that.  If the titles
+                       are not unique, only the last row in the set of
+                       duplicates will appear in the wiki.  (TODO: we
+                       could solve this by checking for collisions and
+                       adding a unique tail when one happens, but we
+                       currently don't do that.  So, be careful.)
+
 
   cat_col:             The number of the column (if any) in the CSV
                        file that should be used to create a category
                        for that row; column numbering begins at 1, not
                        0.  Omit this, or leave the value blank, to not
                        use categories at all.
-
-  listing_suffix_col:  The number of the column (if any) in the CSV
-                       file whose value should be appended to the page
-                       title, after a colon and a space, when the
-                       page's name appears in a listing such as a
-                       table of contents.  (We wish it could also be
-                       used for Category pages, but the way MediaWiki
-                       generates Category pages does not allow that.)
-                       Omit this, or leave the value blank, to not use
-                       any listing suffix at all.
 
   delimiter:           A single-char delimiter used to separate columns
                        in a CSV row.  If omitted, defaults to ','.
@@ -86,11 +89,10 @@ Here is an example config file:
   [default]
   wiki_url: http://localhost/mediawiki
   username: wikibot
-  password: wikibot1
-  title_tmpl: Entry_{}
+  password: bqaRY76gtXu
+  title_tmpl: Entry_{1}
   toc_name: List_of_Entries
   cat_col: 5
-  listing_suffix_col: 1
 
 The "[default]" section name at the top must be present.  The .ini
 format always has sections, and for the sake of forward compatibility
@@ -119,16 +121,28 @@ NOTE: We will probably change --delete to just re-calculate page
 Dependencies and Troubleshooting
 --------------------------------
 
-* You will need to install the 'mwclient' Python library.
+* This requires the 'mwclient' and 'unidecode' Python libraries
 
   If you get an error that looks something like this:
 
     Traceback (most recent call last):
       File "./csv2wiki", line 27, in <module>
-        from xmwclient import Site
-    ImportError: No module named xmwclient
+        from mwclient import Site
+    ImportError: No module named mwclient
 
-  then do 'pip install mwclient' and try again.
+  or this:
+
+    Traceback (most recent call last):
+      File "./csv2wiki", line 27, in <module>
+        from unidecode import unidecode
+    ImportError: No module named unidecode
+
+  then run these commands
+
+    $ sudo pip install mwclient
+    $ sudo pip install unidecode
+
+  and try again.
 
 * If you run create/delete multiple times, you may need to run
   
@@ -180,6 +194,7 @@ Dependencies and Troubleshooting
 import csv
 from mwclient import Site
 from mwclient import errors
+import unidecode
 import getopt, sys
 import ConfigParser
 
@@ -200,19 +215,24 @@ class WikiSession:
         self.title_tmpl          = config_obj['title_tmpl']
         self.toc_name            = config_obj['toc_name']
         self.cat_col             = int(config_obj.get('cat_col', 0))
-        self.listing_suffix_col  = int(config_obj.get('listing_suffix_col', 0))
         self.path_to_api         = config_obj.get('path_to_api')
 
         if self.path_to_api is None:
           self.path_to_api = "/"
 
-        # First count the rows, so we can format row numbers properly.
+        # First get a row count.  Formerly we would pad the row number 
+        # (e.g., row_fmt = "{:0" + str(len(str(wiki_sess.row_count))) + "}") 
+        # before using it as part of a page title.  Now that page
+        # titles are fully templated, we don't use row numbers for
+        # that anymore, but we obtain the count anyway because it will
+        # probably come in handy for something else eventually.
         csv_fh = open(csv_file, 'rb')
         self.csv_input = csv.reader(csv_fh,
                                     delimiter=config_obj.get('delimiter', ','),
                                     quotechar=config_obj.get('quotechar', '"'))
         self.row_count = -1
-        for row in self.csv_input: self.row_count += 1
+        for row in self.csv_input: 
+            self.row_count += 1
         csv_fh.close()
 
         # Reset the reader for our callers.
@@ -239,6 +259,15 @@ class WikiSession:
             sys.stderr.write("       ('%s')\n" % err)
             sys.exit(1)
 
+    def wiki_escape(self, s):
+        """Return a wiki-escaped version of STRING."""
+        # There was a page with a title like
+        # "Entry_72_Foo_Bar_]Baz[." and the API rejected
+        # that, so I guess we have to do some escaping.  
+        # Later some fields with "#N/A" failed (as text in a page, not
+        # as page titles).  Below we carelessly lump all of these
+        # cases together and use "-" as the go-to replacement.
+        return s.replace("]", "-").replace("[", "-").replace("#", "-").replace("/", "-")
 
 # TODO: create_pages() and delete_pages() are MediaWiki-specific right
 # now -- they just drive the 'mwclient' calls directly.  If we wanted
@@ -253,7 +282,6 @@ def create_pages(wiki_sess):
 
     toc_text = ""
     categories = []
-    row_format = "{:0" + str(len(str(wiki_sess.row_count))) + "}"
     std_edit_msg = "Page generated by csv2wiki "               \
                    + "(https://github.com/OpenTechStrategies/" \
                    + "ots-tools/blob/master/csv2wiki)."
@@ -266,7 +294,6 @@ def create_pages(wiki_sess):
         page_name = None
         page_title = None
         page_text = ""
-        listing_suffix = None
         if is_header:
             # if this is the first row, save headers
             header_array = []
@@ -281,28 +308,59 @@ def create_pages(wiki_sess):
             for cell in row:
                 if cell_num == 0:
                     # For this new line, generate a mediawiki page
-                    row_num_str = row_format.format(row_num)
-                    page_name = wiki_sess.title_tmpl.format(row_num_str)
+                    #
+                    # First, splice in any requested columns.  The
+                    # tuple ["0",] below is ignored -- its sole
+                    # purpose is to shift the rest of the row tuple
+                    # rightward one slot, so that users can use
+                    # 1-based indexing instead of 0-based indexing
+                    # when referring to column numbers from the
+                    # title_tmpl field in the template file.
+                    page_name = wiki_sess.title_tmpl.format(*(["0",] + row))
+                    # The input is UTF-8, but for wiki page names we
+                    # want to stick to plain old lower ASCII.
+                    # 
+                    # TODO: This is really a todo for the unidecode
+                    # module (https://pypi.python.org/pypi/Unidecode),
+                    # not us.  The documentation says to just use the
+                    # unidecode() function as the entry point.  That's
+                    # an alias for unidecode_expect_ascii(), which
+                    # should be the right choice when most of your
+                    # input is the plain ASCII subset of UTF-8,
+                    # because it tries to decode using an ASCII
+                    # assumption and then catches the exception and
+                    # tries again with non-ascii as the assumption in
+                    # the rare case that the string is not ASCII.
+                    # However, I think maybe it has a bug with respect
+                    # to recent Python versions?  It tries to trap the
+                    # exception by catching 'UnicodeEncodeError',
+                    # but the error actually thrown is (reasonably
+                    # enough) 'UnicodeDecodeError'.  So it just
+                    # propagates that exception up the stack and never
+                    # makes it to the unidecode_expect_nonascii() call
+                    # that would have successfully decoded the string.
+                    # /usr/local/lib/python2.7/dist-packages/unidecode/__init__.py
+                    # has the details (on my system, at least).
+                    #
+                    # Anyway, the solution for us is to just call
+                    # unidecode_expect_nonascii() directly and not
+                    # worry that that's slightly slower overall.
+                    page_name = unicode(page_name, "utf-8")
+                    page_name = unidecode.unidecode_expect_nonascii(page_name)
+                    page_name = page_name.replace(" ", "_")
+                    page_name = wiki_sess.wiki_escape(page_name)
                     page = wiki_sess.site_conn.pages[page_name]
                     # Set the contents of each cell to their own section.
                 if cell is not "":
                     # A section can only be created with some text
                     # 
                     cell_text = cell
-                    if cell_num + 1 == wiki_sess.listing_suffix_col:
-                        listing_suffix = cell_text
                     if cell_num + 1 == wiki_sess.cat_col:
-                        # If there were a way to use the
-                        # listing_suffix in the Category pages too,
-                        # then we would defer this until we knew that
-                        # all the cells (columns) had been seen.  But
-                        # that's now how Categories work in MediaWiki,
-                        # so we'll just have to live with the fact
-                        # that the TOC will show the listing suffix
-                        # but the relevant Category page will not.
-                        cell_text = '[[Category:' + cell + ']]'
-                        if cell not in categories:
-                            categories.append(cell)
+                        cell_esc = wiki_sess.wiki_escape(cell)
+                        cell_text = '[[:Category:' + cell_esc + '|' + cell_esc + ']]\n'
+                        cell_text += '[[Category:' + cell_esc + ']]'
+                        if cell_esc not in categories:
+                            categories.append(cell_esc)
                     page_text += "== " + header_array[cell_num] + " =="
                     page_text += "\n\n"
                     page_text += cell_text
@@ -313,12 +371,8 @@ def create_pages(wiki_sess):
             except errors.APIError as err:
                 sys.stderr.write("ERROR: unable to write page:\n" + "'%s'" % err)
                 sys.exit(1)
-            if listing_suffix is not None:
-                page_title = page_name + ': ' + listing_suffix
-                toc_text += '* [[' + page_name + '|' + page_title + ']]\n'
-            else:
-                page_title = page_name
-                toc_text += '* [[' + page_name + ']]\n'
+            page_title = page_name
+            toc_text += '* [[' + page_name + ']]\n'
             if row_num > 0:
                 print("CREATED PAGE: \"" + page_title + "\"")
         row_num += 1
@@ -334,8 +388,9 @@ def create_pages(wiki_sess):
             try:
                 page.save("", std_edit_msg)
             except errors.APIError as err:
-                sys.stderr.write("ERROR: unable to create category page '"
-                                 + category + "':\n       '" + err + "'")
+                sys.stderr.write(
+                  "ERROR: unable to create category page '%s':\n" % category)
+                sys.stderr.write("       '%s'\n" % err)
                 sys.exit(1)
             print("CREATED CATEGORY: \"" + category + "\"")
 
