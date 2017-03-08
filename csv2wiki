@@ -39,30 +39,20 @@ a sole "[default]" section and the following elements in that section:
 
   toc_name:            Title for the generated Table of Contents page.
 
-  title_tmpl:          String into which the row number is substituted
-                       to create the title of each row's page.
-                       Substitution is done at the first "{}" in the
-                       string.  For example, if title_tmpl is "Entry_{}",
-                       then each page will be named "Entry_001",
-                       "Entry_002", etc.  The amount of left-side
-                       0-padding will be determined automatically by
-                       the number of rows in the CSV input.
+  title_tmpl:          Template into which selected column values from
+                       a row are substituted to create the title of
+                       each row's page.  Columns are specified with
+                       "{N}" in the string, where N is a column number.
+                       For example, if title_tmpl is "Entry_{1}_{3}",
+                       then if column 1's value for this row is "foo"
+                       and column 2's value is "bar", then that page's
+                       title will be "Entry_foo_bar"
 
   cat_col:             The number of the column (if any) in the CSV
                        file that should be used to create a category
                        for that row; column numbering begins at 1, not
                        0.  Omit this, or leave the value blank, to not
                        use categories at all.
-
-  listing_suffix_col:  The number of the column (if any) in the CSV
-                       file whose value should be appended to the page
-                       title, after a colon and a space, when the
-                       page's name appears in a listing such as a
-                       table of contents.  (We wish it could also be
-                       used for Category pages, but the way MediaWiki
-                       generates Category pages does not allow that.)
-                       Omit this, or leave the value blank, to not use
-                       any listing suffix at all.
 
   delimiter:           A single-char delimiter used to separate columns
                        in a CSV row.  If omitted, defaults to ','.
@@ -87,10 +77,9 @@ Here is an example config file:
   wiki_url: http://localhost/mediawiki
   username: wikibot
   password: wikibot1
-  title_tmpl: Entry_{}
+  title_tmpl: Entry_{1}
   toc_name: List_of_Entries
   cat_col: 5
-  listing_suffix_col: 1
 
 The "[default]" section name at the top must be present.  The .ini
 format always has sections, and for the sake of forward compatibility
@@ -200,7 +189,6 @@ class WikiSession:
         self.title_tmpl          = config_obj['title_tmpl']
         self.toc_name            = config_obj['toc_name']
         self.cat_col             = int(config_obj.get('cat_col', 0))
-        self.listing_suffix_col  = int(config_obj.get('listing_suffix_col', 0))
         self.path_to_api         = config_obj.get('path_to_api')
 
         if self.path_to_api is None:
@@ -266,7 +254,6 @@ def create_pages(wiki_sess):
         page_name = None
         page_title = None
         page_text = ""
-        listing_suffix = None
         if is_header:
             # if this is the first row, save headers
             header_array = []
@@ -282,24 +269,16 @@ def create_pages(wiki_sess):
                 if cell_num == 0:
                     # For this new line, generate a mediawiki page
                     row_num_str = row_format.format(row_num)
-                    page_name = wiki_sess.title_tmpl.format(row_num_str)
+                    page_name = wiki_sess.title_tmpl.format(*(["0",] + row))
+                    page_name = page_name.replace(" ", "_")
+                    print("KFF: '%s'\n" % page_name)
                     page = wiki_sess.site_conn.pages[page_name]
                     # Set the contents of each cell to their own section.
                 if cell is not "":
                     # A section can only be created with some text
                     # 
                     cell_text = cell
-                    if cell_num + 1 == wiki_sess.listing_suffix_col:
-                        listing_suffix = cell_text
                     if cell_num + 1 == wiki_sess.cat_col:
-                        # If there were a way to use the
-                        # listing_suffix in the Category pages too,
-                        # then we would defer this until we knew that
-                        # all the cells (columns) had been seen.  But
-                        # that's now how Categories work in MediaWiki,
-                        # so we'll just have to live with the fact
-                        # that the TOC will show the listing suffix
-                        # but the relevant Category page will not.
                         cell_text = '[[Category:' + cell + ']]'
                         if cell not in categories:
                             categories.append(cell)
@@ -309,35 +288,33 @@ def create_pages(wiki_sess):
                     page_text += "\n\n"
                 cell_num += 1
             try:
-                page.save(page_text, std_edit_msg)
+                pass # page.save(page_text, std_edit_msg)
             except errors.APIError as err:
                 sys.stderr.write("ERROR: unable to write page:\n" + "'%s'" % err)
                 sys.exit(1)
-            if listing_suffix is not None:
-                page_title = page_name + ': ' + listing_suffix
-                toc_text += '* [[' + page_name + '|' + page_title + ']]\n'
-            else:
-                page_title = page_name
-                toc_text += '* [[' + page_name + ']]\n'
+            page_title = page_name
+            toc_text += '* [[' + page_name + ']]\n'
             if row_num > 0:
                 print("CREATED PAGE: \"" + page_title + "\"")
         row_num += 1
         
     # create the TOC page.
-    toc_page = wiki_sess.site_conn.pages[wiki_sess.toc_name]
-    toc_page.save(toc_text, std_edit_msg)
+    # KFF
+    # toc_page = wiki_sess.site_conn.pages[wiki_sess.toc_name]
+    # toc_page.save(toc_text, std_edit_msg)
     
     # generate the category pages
-    if wiki_sess.cat_col:
-        for category in categories:
-            page = wiki_sess.site_conn.pages['Category:' + category]
-            try:
-                page.save("", std_edit_msg)
-            except errors.APIError as err:
-                sys.stderr.write("ERROR: unable to create category page '"
-                                 + category + "':\n       '" + err + "'")
-                sys.exit(1)
-            print("CREATED CATEGORY: \"" + category + "\"")
+# KFF
+#    if wiki_sess.cat_col:
+#        for category in categories:
+#            page = wiki_sess.site_conn.pages['Category:' + category]
+#            try:
+#                page.save("", std_edit_msg)
+#            except errors.APIError as err:
+#                sys.stderr.write("ERROR: unable to create category page '"
+#                                 + category + "':\n       '" + err + "'")
+#                sys.exit(1)
+#            print("CREATED CATEGORY: \"" + category + "\"")
 
     return
 
