@@ -45,7 +45,7 @@ a sole "[default]" section and the following elements in that section:
                        "{N}" in the string, where N is a column number.
 
                        For example, if title_tmpl is "Entry_{1}_{3}",
-                       column 1's value is "foo", and column 2's value
+                       column 1's value is "foo", and column 3's value
                        is "bar", then the page title for this row will
                        be "Entry_foo_bar".
 
