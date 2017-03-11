@@ -373,7 +373,7 @@ def create_pages(wiki_sess):
                     # 
                     cell_text = cell
                     if cell_num + 1 == wiki_sess.cat_col:
-                        cell_esc = massage_string(wiki_sess.wiki_escape(cell))
+                        cell_esc = wiki_sess.wiki_escape(massage_string(cell))
                         cell_text = '[[:Category:' + cell_esc + '|' + cell_esc + ']]\n'
                         cell_text += '[[Category:' + cell_esc + ']]'
                         if cell_esc not in categories:
