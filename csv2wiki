@@ -230,12 +230,7 @@ class WikiSession:
         if self.path_to_api is None:
           self.path_to_api = "/"
 
-        # First get a row count.  Formerly we would pad the row number 
-        # (e.g., row_fmt = "{:0" + str(len(str(wiki_sess.row_count))) + "}") 
-        # before using it as part of a page title.  Now that page
-        # titles are fully templated, we don't use row numbers for
-        # that anymore, but we obtain the count anyway because it will
-        # probably come in handy for something else eventually.
+        # First get a row count, so we can pad the row number later.
         csv_fh = open(csv_file, 'rb')
         self.csv_input = csv.reader(csv_fh,
                                     delimiter=config_obj.get('delimiter', ','),
@@ -363,7 +358,7 @@ def create_pages(wiki_sess):
                     # of using 1-based indexing not 0-based, are now
                     # 1-based, because the row number is in the first
                     # slot (slot [0]) of the tuple. 
-                    row_num_fmt = "{0:0" + str(len(str(wiki_sess.row_count))) + "d}"
+                    row_num_fmt = "{:0" + str(len(str(wiki_sess.row_count))) + "}"
                     row_num_str = row_num_fmt.format(row_num)
                     page_name = wiki_sess.title_tmpl.format(*([row_num_str,] + row))
                     # The input is UTF-8, but for wiki page names we
