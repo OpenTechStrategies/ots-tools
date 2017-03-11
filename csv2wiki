@@ -286,6 +286,41 @@ def create_pages(wiki_sess):
                    + "(https://github.com/OpenTechStrategies/" \
                    + "ots-tools/blob/master/csv2wiki)."
 
+    def massage_string(s):
+      """Convert non-ASCII string S to nearest lower ASCII equivalent."""
+      # TODO: This is really a todo for the unidecode module
+      # (https://pypi.python.org/pypi/Unidecode), not us.  The
+      # documentation says to just use the unidecode() function as the
+      # entry point.  That's an alias for unidecode_expect_ascii(),
+      # which should be the right choice when most of your input is
+      # the plain ASCII subset of UTF-8, because it tries to decode
+      # using an ASCII assumption and then catches the exception and
+      # tries again with non-ascii as the assumption in the rare case
+      # that the string is not ASCII.
+      #
+      # However, I think maybe it has a bug with respect to recent
+      # Python versions?  It tries to trap the exception by catching
+      # 'UnicodeEncodeError', but the error actually thrown is
+      # (reasonably enough) 'UnicodeDecodeError'.  So it just
+      # propagates that exception up the stack and never makes it to
+      # the unidecode_expect_nonascii() call that would have
+      # successfully decoded the string.
+      # /usr/local/lib/python2.7/dist-packages/unidecode/__init__.py
+      # has the details (on my system, at least).
+      #
+      # Anyway, the solution is to call unidecode_expect_nonascii()
+      # directly and not worry that that's slightly slower overall.
+      try:
+          s = unicode(s, "utf-8")
+      except UnicodeDecodeError:
+          # TODO: We could nest more encoding attempts here.
+          # E.g., ISO-8859-2, -3, ... -15, KOI8_R, etc.  But
+          # information about character encoding frequency is
+          # surprisingly hard to come by on the Internet, so it's
+          # unclear what order would be best to try them in.
+          s = unicode(s, "latin-1")
+      return unidecode.unidecode_expect_nonascii(s)
+
     # read in csv
     is_header = True
     row_num = 0
@@ -345,8 +380,7 @@ def create_pages(wiki_sess):
                     # Anyway, the solution for us is to just call
                     # unidecode_expect_nonascii() directly and not
                     # worry that that's slightly slower overall.
-                    page_name = unicode(page_name, "utf-8")
-                    page_name = unidecode.unidecode_expect_nonascii(page_name)
+                    page_name = massage_string(page_name)
                     page_name = page_name.replace(" ", "_")
                     page_name = wiki_sess.wiki_escape(page_name)
                     page = wiki_sess.site_conn.pages[page_name]
@@ -356,7 +390,7 @@ def create_pages(wiki_sess):
                     # 
                     cell_text = cell
                     if cell_num + 1 == wiki_sess.cat_col:
-                        cell_esc = wiki_sess.wiki_escape(cell)
+                        cell_esc = massage_string(wiki_sess.wiki_escape(cell))
                         cell_text = '[[:Category:' + cell_esc + '|' + cell_esc + ']]\n'
                         cell_text += '[[Category:' + cell_esc + ']]'
                         if cell_esc not in categories:
