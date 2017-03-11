@@ -327,7 +327,7 @@ def create_pages(wiki_sess):
           # E.g., ISO-8859-2, -3, ... -15, KOI8_R, etc.  But
           # information about character encoding frequency is
           # surprisingly hard to come by on the Internet, so it's
-          # unclear what order would be best to try them in.
+          # unclear what order it would be best to try them in.
           s = unicode(s, "latin-1")
       return unidecode.unidecode_expect_nonascii(s)
 
