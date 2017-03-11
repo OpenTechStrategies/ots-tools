@@ -43,23 +43,33 @@ a sole "[default]" section and the following elements in that section:
                        a row are substituted to create the title of
                        each row's page.  Columns are specified with
                        "{N}" in the string, where N is a column number.
+                       The special column {0} is the CSV row number,
+                       which is automatically left-padded with zeros
+                       appropriately for the total number of rows.
 
-                       For example, if title_tmpl is "Entry_{1}_{3}",
-                       column 1's value is "foo", and column 3's value
-                       is "bar", then the page title for this row will
-                       be "Entry_foo_bar".
+                       For example:
 
-                       *** NOTE: *** The titles generated this way
-                       must be unique.  Typically, you ensure this in
-                       the input by making sure that at least one of
-                       the columns is some kind of unique identifying
-                       number or something like that.  If the titles
-                       are not unique, only the last row in the set of
-                       duplicates will appear in the wiki.  (TODO: we
-                       could solve this by checking for collisions and
-                       adding a unique tail when one happens, but we
-                       currently don't do that.  So, be careful.)
+                       Suppose title_tmpl is "Entry_{1}_{3}_{0}",
+                       column 1 contains "foo", column 3 has "bar",
+                       and this is row 15 of a CSV file with 250 rows.
+                       The page title corresponding to this row would
+                       be "Entry_foo_bar_015".
 
+                       *NOTE:* 
+
+                       The titles generated this way must be unique.
+                       Typically, you ensure uniqueness by making sure
+                       that at least one element of title_tmpl is some
+                       kind of unique identifying number -- either a
+                       column whose value is known to be unique, or
+                       the row number.
+
+                       If the generated page titles are not unique,
+                       only the last row in the set of duplicates will
+                       appear in the wiki.  (TODO: we could solve this
+                       by checking for collisions and adding a unique
+                       tail when one happens, but we currently don't
+                       do that.  So, be careful.)
 
   cat_col:             The number of the column (if any) in the CSV
                        file that should be used to create a category
@@ -344,14 +354,18 @@ def create_pages(wiki_sess):
                 if cell_num == 0:
                     # For this new line, generate a mediawiki page
                     #
-                    # First, splice in any requested columns.  The
-                    # tuple ["0",] below is ignored -- its sole
-                    # purpose is to shift the rest of the row tuple
-                    # rightward one slot, so that users can use
-                    # 1-based indexing instead of 0-based indexing
-                    # when referring to column numbers from the
-                    # title_tmpl field in the template file.
-                    page_name = wiki_sess.title_tmpl.format(*(["0",] + row))
+                    # Splice in any requested columns.  We prepend the
+                    # row_num as the first element in the tuple, which
+                    # brings two benefits.  First, the user get access
+                    # to the row number, via the special code "{0}" in
+                    # title_tmpl in the config file.  Second, all the
+                    # other columns, which the user is likely to think
+                    # of using 1-based indexing not 0-based, are now
+                    # 1-based, because the row number is in the first
+                    # slot (slot [0]) of the tuple. 
+                    row_num_fmt = "{0:0" + str(len(str(wiki_sess.row_count))) + "d}"
+                    row_num_str = row_num_fmt.format(row_num)
+                    page_name = wiki_sess.title_tmpl.format(*([row_num_str,] + row))
                     # The input is UTF-8, but for wiki page names we
                     # want to stick to plain old lower ASCII.
                     # 
