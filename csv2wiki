@@ -363,32 +363,6 @@ def create_pages(wiki_sess):
                     page_name = wiki_sess.title_tmpl.format(*([row_num_str,] + row))
                     # The input is UTF-8, but for wiki page names we
                     # want to stick to plain old lower ASCII.
-                    # 
-                    # TODO: This is really a todo for the unidecode
-                    # module (https://pypi.python.org/pypi/Unidecode),
-                    # not us.  The documentation says to just use the
-                    # unidecode() function as the entry point.  That's
-                    # an alias for unidecode_expect_ascii(), which
-                    # should be the right choice when most of your
-                    # input is the plain ASCII subset of UTF-8,
-                    # because it tries to decode using an ASCII
-                    # assumption and then catches the exception and
-                    # tries again with non-ascii as the assumption in
-                    # the rare case that the string is not ASCII.
-                    # However, I think maybe it has a bug with respect
-                    # to recent Python versions?  It tries to trap the
-                    # exception by catching 'UnicodeEncodeError',
-                    # but the error actually thrown is (reasonably
-                    # enough) 'UnicodeDecodeError'.  So it just
-                    # propagates that exception up the stack and never
-                    # makes it to the unidecode_expect_nonascii() call
-                    # that would have successfully decoded the string.
-                    # /usr/local/lib/python2.7/dist-packages/unidecode/__init__.py
-                    # has the details (on my system, at least).
-                    #
-                    # Anyway, the solution for us is to just call
-                    # unidecode_expect_nonascii() directly and not
-                    # worry that that's slightly slower overall.
                     page_name = massage_string(page_name)
                     page_name = page_name.replace(" ", "_")
                     page_name = wiki_sess.wiki_escape(page_name)
