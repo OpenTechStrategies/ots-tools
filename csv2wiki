@@ -213,16 +213,16 @@ import requests
 
 class WikiSession:
     """Connection to a wiki with a given username and password."""
-    def __init__(self, config_obj):
-        """Log in to a wiki session, taking login parameters from CONFIG_OBJ."""
+    def __init__(self, config):
+        """Log in to a wiki session, taking login parameters from CONFIG."""
         self.site_conn           = None  # will be a mwclient Site object
-        self.wiki_url            = config_obj['wiki_url']
-        self.username            = config_obj['username']
-        self.password            = config_obj['password']
-        self.title_tmpl          = config_obj['title_tmpl']
-        self.toc_name            = config_obj['toc_name']
-        self.cat_col             = int(config_obj.get('cat_col', 0))
-        self.path_to_api         = config_obj.get('path_to_api')
+        self.wiki_url            = config['wiki_url']
+        self.username            = config['username']
+        self.password            = config['password']
+        self.title_tmpl          = config['title_tmpl']
+        self.toc_name            = config['toc_name']
+        self.cat_col             = int(config.get('cat_col', 0))
+        self.path_to_api         = config.get('path_to_api')
         if self.path_to_api is None:
           self.path_to_api = "/"
 
@@ -256,7 +256,7 @@ class WikiSession:
 
 class CSVInput():
     """Iterator class encapsulating a CSV file as input."""
-    def __init__(self, csv_file, config_obj):
+    def __init__(self, csv_file, config):
         """Prepare CSV_FILE for input, with delimiters from CONFIG.
         CONFIG is a dict returned from parse_config_file()."""
         self.csv_reader          = None  # will be csv.reader object
@@ -266,8 +266,8 @@ class CSVInput():
         # First get a row count, so we can pad the row number later.
         csv_fh = open(csv_file, 'rb')
         self.csv_reader = csv.reader(csv_fh,
-                                    delimiter=config_obj.get('delimiter', ','),
-                                    quotechar=config_obj.get('quotechar', '"'))
+                                    delimiter=config.get('delimiter', ','),
+                                    quotechar=config.get('quotechar', '"'))
         self.row_count = -1
         for row in self.csv_reader: 
             self.row_count += 1
@@ -276,8 +276,8 @@ class CSVInput():
         # Reset the reader for our callers.
         csv_fh = open(csv_file, 'rb')
         self.csv_reader = csv.reader(csv_fh,
-                                    delimiter=config_obj.get('delimiter', ','),
-                                    quotechar=config_obj.get('quotechar', '"'))
+                                    delimiter=config.get('delimiter', ','),
+                                    quotechar=config.get('quotechar', '"'))
 
         self.headers = next(self.csv_reader)
 
@@ -447,9 +447,9 @@ def parse_config_file(config_file):
     # Return a newly-created dictionary, rather than the ConfigParser
     # object itself, because we want to avoid callers having to pass
     # the 'default' section name every time they access a field.
-    config_obj = {}
-    config = ConfigParser.ConfigParser()
-    parsed_files = config.read(config_file)
+    config = {}
+    config_parser = ConfigParser.ConfigParser()
+    parsed_files = config_parser.read(config_file)
     # ConfigParser.read() returns the number of files read, and if
     # some of them aren't present, it doesn't raise any exceptions
     # about that, it just moves on to try the next one in the list. 
@@ -463,9 +463,9 @@ def parse_config_file(config_file):
     elif parsed_files[0] != config_file:
         raise IOError("parsed unexpected config file instead of '%s'" % config_file)
     # We have successfully read the config file, so parse it.
-    for option in config.options('default'):
-        config_obj[option] = config.get('default', option)
-    return config_obj
+    for option in config_parser.options('default'):
+        config[option] = config_parser.get('default', option)
+    return config
 
 
 def main():
@@ -487,7 +487,7 @@ def main():
         sys.exit(2)
 
     csv_file = None
-    config_file = None
+    config = None
     wiki_sess = None
     delete_matching = None
     bad_opt_seen = False
@@ -498,7 +498,7 @@ def main():
         elif o in ("-d", "--delete-matching"):
             delete_matching = a
         elif o in ("-c", "--config"):
-            config_file = a
+            config = parse_config_file(a)
         else:
             sys.stderr.write("ERROR: unrecognized option '%s'\n" % o)
             bad_opt_seen = True
@@ -506,14 +506,12 @@ def main():
     if bad_opt_seen:
         sys.exit(2)
 
-    if config_file is None:
+    if config is None:
         sys.stderr.write("ERROR: missing config file; use -c to supply it\n")
         usage(errout=True)
         sys.exit(2)
-    else:
-        config_settings = parse_config_file(config_file)
 
-    wiki_sess = WikiSession(config_settings)
+    wiki_sess = WikiSession(config)
 
     if delete_matching is not None:
         if len(args) > 0:
@@ -536,7 +534,7 @@ def main():
             usage(errout=True)
             sys.exit(2)
         try:
-            create_pages(wiki_sess, CSVInput(args[0], config_settings))
+            create_pages(wiki_sess, CSVInput(args[0], config))
         except IndexError as err:
             sys.stderr.write("ERROR: '%s'\n" % err)
             usage(errout=True)
