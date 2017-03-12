@@ -254,6 +254,41 @@ class WikiSession:
         # cases together and use "-" as the go-to replacement.
         return s.replace("]", "-").replace("[", "-").replace("#", "-").replace("/", "-")
 
+class CSVInput():
+    """Iterator class encapsulating a CSV file as input."""
+    def __init__(self, csv_file, config_obj):
+        """Prepare CSV_FILE for input, with delimiters from CONFIG.
+        CONFIG is a dict returned from parse_config_file()."""
+        self.csv_reader          = None  # will be csv.reader object
+        self.headers             = []
+        self.row_count           = None  # will be num rows not counting header
+
+        # First get a row count, so we can pad the row number later.
+        csv_fh = open(csv_file, 'rb')
+        self.csv_reader = csv.reader(csv_fh,
+                                    delimiter=config_obj.get('delimiter', ','),
+                                    quotechar=config_obj.get('quotechar', '"'))
+        self.row_count = -1
+        for row in self.csv_reader: 
+            self.row_count += 1
+        csv_fh.close()
+
+        # Reset the reader for our callers.
+        csv_fh = open(csv_file, 'rb')
+        self.csv_reader = csv.reader(csv_fh,
+                                    delimiter=config_obj.get('delimiter', ','),
+                                    quotechar=config_obj.get('quotechar', '"'))
+
+        self.headers = next(self.csv_reader)
+
+    def __iter__(self):
+        """Return the underlying iterator for this CSV's rows."""
+        return self.csv_reader
+
+    def __next__(self):
+        """Return the next row in this CSV."""
+        return next(self.csv_reader)
+
 # TODO: create_pages() and delete_pages() are MediaWiki-specific right
 # now -- they just drive the 'mwclient' calls directly.  If we wanted
 # to support other wiki types, the way to do that would be to abstract
@@ -432,40 +467,6 @@ def parse_config_file(config_file):
         config_obj[option] = config.get('default', option)
     return config_obj
 
-class CSVInput():
-    """Iterator class encapsulating a CSV file as input."""
-    def __init__(self, csv_file, config_obj):
-        """Prepare CSV_FILE for input, with delimiters from CONFIG.
-        CONFIG is a dict returned from parse_config_file()."""
-        self.csv_reader          = None  # will be csv.reader object
-        self.headers             = []
-        self.row_count           = None  # will be num rows not counting header
-
-        # First get a row count, so we can pad the row number later.
-        csv_fh = open(csv_file, 'rb')
-        self.csv_reader = csv.reader(csv_fh,
-                                    delimiter=config_obj.get('delimiter', ','),
-                                    quotechar=config_obj.get('quotechar', '"'))
-        self.row_count = -1
-        for row in self.csv_reader: 
-            self.row_count += 1
-        csv_fh.close()
-
-        # Reset the reader for our callers.
-        csv_fh = open(csv_file, 'rb')
-        self.csv_reader = csv.reader(csv_fh,
-                                    delimiter=config_obj.get('delimiter', ','),
-                                    quotechar=config_obj.get('quotechar', '"'))
-
-        self.headers = next(self.csv_reader)
-
-    def __iter__(self):
-        """Return the underlying iterator for this CSV's rows."""
-        return self.csv_reader
-
-    def __next__(self):
-        """Return the next row in this CSV."""
-        return next(self.csv_reader)
 
 def main():
     """
