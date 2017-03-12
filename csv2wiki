@@ -23,7 +23,11 @@ Convert each row of a UTF-8 or Latin-1 CSV file to a MediaWiki page.
 
 Basic usage:
 
-  $ csv2wiki -c CONFIG_FILE [ --delete-matching=PATTERN ] CSV_FILE
+  $ csv2wiki -c CONFIG_FILE (CSV_FILE | --delete-matching=PATTERN)
+
+The common case is to pass a CSV_FILE on the command line; wiki pages
+will then be created (or updated) based on the CSV contents.  (For the
+less common page-deletion case, see section "Page deletion support".)
 
 The CONFIG_FILE contains the wiki URL, login information, and various
 other run-time parameters.  It is in standard .ini file format, with
@@ -112,21 +116,17 @@ Page deletion support
 ---------------------
 
 This script also supports batch deletion of pages, since a possible
-outcome of initial runs is that you have a bunch of pages in your wiki
-that turn out to be not ready.  Use the "--delete-matching PATTERN"
-option to remove them.  All pages whose names match PATTERN will be 
-deleted (and no pages will be created).
+outcome of running this is that you end up with pages in your wiki
+that you don't want.  Use the "--delete-matching PATTERN" option to
+remove them.  All pages whose names match PATTERN will be deleted (and
+no pages will be created).
 
 Typically, PATTERN will be similar to the title_tmpl config element,
 since --delete-matching is most often used to delete pages originally
 created with this script.
 
-NOTE: We will probably change --delete to just re-calculate page
-      titles based on the CSV input, instead of taking a PATTERN
-      argument and then querying the MediaWiki API for a list of pages
-      whose names match that PATTERN.  If we make this change, then
-      the --delete-matching=PATTERN option will become just --delete
-      with no argument.
+   (TODO: Page deletion does not yet de-list the removed pages from
+          the generated TOC page.  We should fix that.)
 
 Dependencies and Troubleshooting
 --------------------------------
