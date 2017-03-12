@@ -313,59 +313,56 @@ def create_pages(wiki_sess, csv_input):
         page_name = None
         page_title = None
         page_text = ""
-        if False:
-            pass
-        else:
-            # Looping over the cells in the row.  Name the sections
-            # according to headers.
-            cell_num = 0
-            cell_text = None
-            for cell in row:
-                if cell_num == 0:
-                    # For this new line, generate a mediawiki page
-                    #
-                    # Splice in any requested columns.  We prepend the
-                    # row_num as the first element in the tuple, which
-                    # brings two benefits.  First, the user get access
-                    # to the row number, via the special code "{0}" in
-                    # title_tmpl in the config file.  Second, all the
-                    # other columns, which the user is likely to think
-                    # of using 1-based indexing not 0-based, are now
-                    # 1-based, because the row number is in the first
-                    # slot (slot [0]) of the tuple. 
-                    row_num_fmt = "{:0" + str(len(str(csv_input.row_count))) + "}"
-                    row_num_str = row_num_fmt.format(row_num)
-                    page_name = wiki_sess.title_tmpl.format(*([row_num_str,] + row))
-                    # The input is UTF-8, but for wiki page names we
-                    # want to stick to plain old lower ASCII.
-                    page_name = massage_string(page_name)
-                    page_name = page_name.replace(" ", "_")
-                    page_name = wiki_sess.wiki_escape(page_name)
-                    page = wiki_sess.site_conn.pages[page_name]
-                    # Set the contents of each cell to their own section.
-                if cell is not "":
-                    # A section can only be created with some text
-                    # 
-                    cell_text = cell
-                    if cell_num + 1 == wiki_sess.cat_col:
-                        cell_esc = wiki_sess.wiki_escape(massage_string(cell))
-                        cell_text = '[[:Category:' + cell_esc + '|' + cell_esc + ']]\n'
-                        cell_text += '[[Category:' + cell_esc + ']]'
-                        if cell_esc not in categories:
-                            categories.append(cell_esc)
-                    page_text += "== " + csv_input.headers[cell_num] + " =="
-                    page_text += "\n\n"
-                    page_text += cell_text
-                    page_text += "\n\n"
-                cell_num += 1
-            try:
-                page.save(page_text, std_edit_msg)
-            except errors.APIError as err:
-                sys.stderr.write("ERROR: unable to write page:\n" + "'%s'" % err)
-                sys.exit(1)
-            page_title = page_name
-            toc_text += '* [[' + page_name + ']]\n'
-            print("CREATED PAGE: \"" + page_title + "\"")
+        # Looping over the cells in the row.  Name the sections
+        # according to headers.
+        cell_num = 0
+        cell_text = None
+        for cell in row:
+            if cell_num == 0:
+                # For this new line, generate a mediawiki page
+                #
+                # Splice in any requested columns.  We prepend the
+                # row_num as the first element in the tuple, which
+                # brings two benefits.  First, the user get access
+                # to the row number, via the special code "{0}" in
+                # title_tmpl in the config file.  Second, all the
+                # other columns, which the user is likely to think
+                # of using 1-based indexing not 0-based, are now
+                # 1-based, because the row number is in the first
+                # slot (slot [0]) of the tuple. 
+                row_num_fmt = "{:0" + str(len(str(csv_input.row_count))) + "}"
+                row_num_str = row_num_fmt.format(row_num)
+                page_name = wiki_sess.title_tmpl.format(*([row_num_str,] + row))
+                # The input is UTF-8, but for wiki page names we
+                # want to stick to plain old lower ASCII.
+                page_name = massage_string(page_name)
+                page_name = page_name.replace(" ", "_")
+                page_name = wiki_sess.wiki_escape(page_name)
+                page = wiki_sess.site_conn.pages[page_name]
+                # Set the contents of each cell to their own section.
+            if cell is not "":
+                # A section can only be created with some text
+                # 
+                cell_text = cell
+                if cell_num + 1 == wiki_sess.cat_col:
+                    cell_esc = wiki_sess.wiki_escape(massage_string(cell))
+                    cell_text = '[[:Category:' + cell_esc + '|' + cell_esc + ']]\n'
+                    cell_text += '[[Category:' + cell_esc + ']]'
+                    if cell_esc not in categories:
+                        categories.append(cell_esc)
+                page_text += "== " + csv_input.headers[cell_num] + " =="
+                page_text += "\n\n"
+                page_text += cell_text
+                page_text += "\n\n"
+            cell_num += 1
+        try:
+            page.save(page_text, std_edit_msg)
+        except errors.APIError as err:
+            sys.stderr.write("ERROR: unable to write page:\n" + "'%s'" % err)
+            sys.exit(1)
+        page_title = page_name
+        toc_text += '* [[' + page_name + ']]\n'
+        print("CREATED PAGE: \"" + page_title + "\"")
         
     # create the TOC page.
     toc_page = wiki_sess.site_conn.pages[wiki_sess.toc_name]
