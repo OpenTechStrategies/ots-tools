@@ -212,13 +212,10 @@ import ConfigParser
 import requests
 
 class WikiSession:
-    """One CSV import session with a given user and a given wiki."""
-    def __init__(self, csv_file, config_obj):
-        """Log in to a wiki session to create pages based on CSV_FILE.
-        Take login parameters from CONFIG_OBJ."""
+    """Connection to a wiki with a given username and password."""
+    def __init__(self, config_obj):
+        """Log in to a wiki session, taking login parameters from CONFIG_OBJ."""
         self.site_conn           = None  # will be a mwclient Site object
-        self.csv_input           = None  # will be csv.reader object
-        self.row_count           = None  # will be num rows not counting header
         self.wiki_url            = config_obj['wiki_url']
         self.username            = config_obj['username']
         self.password            = config_obj['password']
@@ -226,25 +223,8 @@ class WikiSession:
         self.toc_name            = config_obj['toc_name']
         self.cat_col             = int(config_obj.get('cat_col', 0))
         self.path_to_api         = config_obj.get('path_to_api')
-
         if self.path_to_api is None:
           self.path_to_api = "/"
-
-        # First get a row count, so we can pad the row number later.
-        csv_fh = open(csv_file, 'rb')
-        self.csv_input = csv.reader(csv_fh,
-                                    delimiter=config_obj.get('delimiter', ','),
-                                    quotechar=config_obj.get('quotechar', '"'))
-        self.row_count = -1
-        for row in self.csv_input: 
-            self.row_count += 1
-        csv_fh.close()
-
-        # Reset the reader for our callers.
-        csv_fh = open(csv_file, 'rb')
-        self.csv_input = csv.reader(csv_fh,
-                                    delimiter=config_obj.get('delimiter', ','),
-                                    quotechar=config_obj.get('quotechar', '"'))
 
         # Connect to the site.
         try:
@@ -280,10 +260,9 @@ class WikiSession:
 # that stuff into new methods in WikiSession and select conditional
 # branches based on a new config parameter 'wiki_type'.
 
-def create_pages(wiki_sess):
-    """Create one wiki page for each row in the CSV file corresponding
-    to WikiSession WIKI_SESS.  The CSV must have a header row and at
-    least one row of content."""
+def create_pages(wiki_sess, csv_input):
+    """Create a wiki page in WIKI_SESS for each row in CSV_INPUT.
+    The CSV must have at least one row of content."""
 
     toc_text = ""
     categories = []
@@ -327,19 +306,15 @@ def create_pages(wiki_sess):
       return unidecode.unidecode_expect_nonascii(s)
 
     # read in csv
-    is_header = True
     row_num = 0
-    for row in wiki_sess.csv_input:
+    for row in csv_input:
+        row_num += 1
         page = None
         page_name = None
         page_title = None
         page_text = ""
-        if is_header:
-            # if this is the first row, save headers
-            header_array = []
-            for cell in row:
-                header_array.append(cell)
-            is_header = False
+        if False:
+            pass
         else:
             # Looping over the cells in the row.  Name the sections
             # according to headers.
@@ -358,7 +333,7 @@ def create_pages(wiki_sess):
                     # of using 1-based indexing not 0-based, are now
                     # 1-based, because the row number is in the first
                     # slot (slot [0]) of the tuple. 
-                    row_num_fmt = "{:0" + str(len(str(wiki_sess.row_count))) + "}"
+                    row_num_fmt = "{:0" + str(len(str(csv_input.row_count))) + "}"
                     row_num_str = row_num_fmt.format(row_num)
                     page_name = wiki_sess.title_tmpl.format(*([row_num_str,] + row))
                     # The input is UTF-8, but for wiki page names we
@@ -378,7 +353,7 @@ def create_pages(wiki_sess):
                         cell_text += '[[Category:' + cell_esc + ']]'
                         if cell_esc not in categories:
                             categories.append(cell_esc)
-                    page_text += "== " + header_array[cell_num] + " =="
+                    page_text += "== " + csv_input.headers[cell_num] + " =="
                     page_text += "\n\n"
                     page_text += cell_text
                     page_text += "\n\n"
@@ -390,9 +365,7 @@ def create_pages(wiki_sess):
                 sys.exit(1)
             page_title = page_name
             toc_text += '* [[' + page_name + ']]\n'
-            if row_num > 0:
-                print("CREATED PAGE: \"" + page_title + "\"")
-        row_num += 1
+            print("CREATED PAGE: \"" + page_title + "\"")
         
     # create the TOC page.
     toc_page = wiki_sess.site_conn.pages[wiki_sess.toc_name]
@@ -415,7 +388,9 @@ def create_pages(wiki_sess):
 
 def delete_pages(wiki_sess, pat):
     """Delete wiki pages in WIKI_SESS's wiki whose names match pattern PAT."""
-    search_result = wiki_sess.site_conn.search(pat)
+    # Could change what="title" to what="text" to get full-text
+    # matching on page contents.  We might want to offer that option.
+    search_result = wiki_sess.site_conn.search(pat, what="title")
     for result in search_result:
         # get as a page
         page = wiki_sess.site_conn.pages[result['title']]
@@ -459,6 +434,41 @@ def parse_config_file(config_file):
     for option in config.options('default'):
         config_obj[option] = config.get('default', option)
     return config_obj
+
+class CSVInput():
+    """Iterator class encapsulating a CSV file as input."""
+    def __init__(self, csv_file, config_obj):
+        """Prepare CSV_FILE for input, with delimiters from CONFIG.
+        CONFIG is a dict returned from parse_config_file()."""
+        self.csv_reader          = None  # will be csv.reader object
+        self.headers             = []
+        self.row_count           = None  # will be num rows not counting header
+
+        # First get a row count, so we can pad the row number later.
+        csv_fh = open(csv_file, 'rb')
+        self.csv_reader = csv.reader(csv_fh,
+                                    delimiter=config_obj.get('delimiter', ','),
+                                    quotechar=config_obj.get('quotechar', '"'))
+        self.row_count = -1
+        for row in self.csv_reader: 
+            self.row_count += 1
+        csv_fh.close()
+
+        # Reset the reader for our callers.
+        csv_fh = open(csv_file, 'rb')
+        self.csv_reader = csv.reader(csv_fh,
+                                    delimiter=config_obj.get('delimiter', ','),
+                                    quotechar=config_obj.get('quotechar', '"'))
+
+        self.headers = next(self.csv_reader)
+
+    def __iter__(self):
+        """Return the underlying iterator for this CSV's rows."""
+        return self.csv_reader
+
+    def __next__(self):
+        """Return the next row in this CSV."""
+        return next(self.csv_reader)
 
 def main():
     """
@@ -505,18 +515,13 @@ def main():
     else:
         config_settings = parse_config_file(config_file)
 
-    if len(args) == 1:
-        wiki_sess = WikiSession(args[0], config_settings)
-    elif len(args) < 1:
-        sys.stderr.write("ERROR: missing CSV file argument\n")
-        usage(errout=True)
-        sys.exit(2)
-    else:
-        sys.stderr.write("ERROR: too many arguments\n")
-        usage(errout=True)
-        sys.exit(2)
+    wiki_sess = WikiSession(config_settings)
 
     if delete_matching is not None:
+        if len(args) > 0:
+            sys.stderr.write("ERROR: too many arguments for --delete-matching\n")
+            usage(errout=True)
+            sys.exit(2)
         try:
             delete_pages(wiki_sess, delete_matching)
         except IndexError as err:
@@ -524,8 +529,16 @@ def main():
             usage(errout=True)
             sys.exit(1)
     else:
+        if len(args) < 1:
+            sys.stderr.write("ERROR: missing CSV file argument\n")
+            usage(errout=True)
+            sys.exit(2)
+        elif len(args) > 1:
+            sys.stderr.write("ERROR: too many arguments\n")
+            usage(errout=True)
+            sys.exit(2)
         try:
-            create_pages(wiki_sess)
+            create_pages(wiki_sess, CSVInput(args[0], config_settings))
         except IndexError as err:
             sys.stderr.write("ERROR: '%s'\n" % err)
             usage(errout=True)
