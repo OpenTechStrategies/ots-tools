@@ -23,7 +23,7 @@ Convert each row of a UTF-8 or Latin-1 CSV file to a MediaWiki page.
 
 Basic usage:
 
-  $ csv2wiki -c CONFIG_FILE (CSV_FILE | --delete-matching=PATTERN)
+  $ csv2wiki -c CONFIG_FILE [OPTIONS] (CSV_FILE | --delete-matching=PATTERN)
 
 The common case is to pass a CSV_FILE on the command line; wiki pages
 will then be created (or updated) based on the CSV contents.  (For the
@@ -112,6 +112,29 @@ The "[default]" section name at the top must be present.  The .ini
 format always has sections, and for the sake of forward compatibility
 this script requires the one section's name to be "default".
 
+Command-line options:
+---------------------
+
+In general, the config file is for run-time configuration that is
+likely to be permanent (e.g., used for a production run), and
+command-line options are for optional behavior that is likely to vary
+from run to run.  The exception to this is the "-c" option, of course,
+since it's how the config file is indicated in the first place.
+
+  -c | --config FILE   Use FILE as the run-time job control file;
+                       see the "Example config file" section above.
+
+  --pare N             Convert only 1/N of the CSV rows to wiki pages.
+                       This is useful for doing test conversions of a
+                       large CSV file, when you don't want to convert
+                       every row in every run.  The --pare option will
+                       convert just 1/N rows, spaced evenly across the
+                       CSV file and selected deterministically.
+
+  --delete-matching    See "Page deletion support" section below.
+
+  -h | --help          Show usage message and exit without error.
+
 Page deletion support
 ---------------------
 
@@ -153,6 +176,18 @@ Dependencies and Troubleshooting
     $ sudo pip install unidecode
 
   and try again.
+
+* You may need to convert carriage returns to linefeeds
+
+  If your CSV input file uses only carriage returns (CR) for line
+  breaks, then you must convert it to using line feeds (LF).  On
+  Unix-like systems, this should work:
+
+    $ tr '\\r' '\\n' < cr-file.csv > lf-file.csv
+
+  Note this should not be necessary if the CSV file is in CRLF format,
+  that is, the Microsoft Windows / MS-DOS standard for line endings,
+  which uses both characters together at the end of each line.
 
 * If you run create/delete multiple times, you may need to run
   
@@ -286,9 +321,11 @@ class CSVInput():
 # that stuff into new methods in WikiSession and select conditional
 # branches based on a new config parameter 'wiki_type'.
 
-def create_pages(wiki_sess, csv_input):
+def create_pages(wiki_sess, csv_input, pare):
     """Create a wiki page in WIKI_SESS for each row in CSV_INPUT.
-    The CSV must have at least one row of content."""
+    The CSV must have at least one row of content.
+    If PARE is not None, it is an integer indicating that only
+    1/PARE rows should be handled, and the rest skipped."""
 
     toc_text = ""
     categories = []
@@ -351,6 +388,10 @@ def create_pages(wiki_sess, csv_input):
         page_name = None
         page_title = None
         page_text = ""
+
+        if pare is not None and row_num % pare != 0:
+          continue
+
         # Looping over the cells in the row.  Name the sections
         # according to headers.
         cell_num = 0
@@ -484,6 +525,7 @@ def main():
                                    'h?d:c:',
                                    ("help",
                                     "usage",
+                                    "pare=",
                                     "delete-matching=",
                                     "config="))
     except getopt.GetoptError as err:
@@ -496,12 +538,15 @@ def main():
     wiki_sess = None
     delete_matching = None
     bad_opt_seen = False
+    pare = None
     for o, a in opts:
         if o in ("-h", "-?", "--help", "--usage"):
             usage()
             sys.exit(0)
         elif o in ("-d", "--delete-matching"):
             delete_matching = a
+        elif o in ("--pare"):
+            pare = int(a)
         elif o in ("-c", "--config"):
             config = parse_config_file(a)
         else:
@@ -539,7 +584,7 @@ def main():
             usage(errout=True)
             sys.exit(2)
         try:
-            create_pages(wiki_sess, CSVInput(args[0], config))
+            create_pages(wiki_sess, CSVInput(args[0], config), pare)
         except IndexError as err:
             sys.stderr.write("ERROR: '%s'\n" % err)
             usage(errout=True)
