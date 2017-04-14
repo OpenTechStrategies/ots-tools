@@ -81,6 +81,15 @@ a sole "[default]" section and the following elements in that section:
                        0.  Omit this, or leave the value blank, to not
                        use categories at all.
 
+  keep_empty:          If present, still create sections for empty
+                       cells in the CSV.  If a value is provided, use
+                       that value as the content of the section;
+                       otherwise, use the empty string.
+
+                       In omitted, then simply don't create a section
+                       within a row's page for any column (cell) that
+                       has no content; this is the default behavior.
+
   delimiter:           A single-char delimiter used to separate columns
                        in a CSV row.  If omitted, defaults to ','.
 
@@ -257,6 +266,7 @@ class WikiSession:
         self.title_tmpl          = config['title_tmpl']
         self.toc_name            = config['toc_name']
         self.cat_col             = int(config.get('cat_col', 0))
+        self.keep_empty          = config.get('keep_empty', False)
         self.path_to_api         = config.get('path_to_api')
         if self.path_to_api is None:
           self.path_to_api = "/"
@@ -433,22 +443,37 @@ def create_pages(wiki_sess, csv_input, null_as_value, pare):
                 page_name = wiki_sess.wiki_escape(page_name)
                 page = wiki_sess.site_conn.pages[page_name]
                 # Set the contents of each cell to their own section.
-            if cell is not "" \
-               and (cell.lower() != "null" if not null_as_value else True):
-                # A section can only be created with some text
-                # 
-                cell_text = cell
-                if cell_num + 1 == wiki_sess.cat_col:
-                    cell_esc = wiki_sess.wiki_escape(massage_string(cell))
-                    cell_text = '[[:Category:' + cell_esc + '|' + cell_esc + ']]\n'
-                    cell_text += '[[Category:' + cell_esc + ']]'
-                    if cell_esc not in categories:
-                        categories.append(cell_esc)
-                page_text += "== " + csv_input.headers[cell_num] + " =="
-                page_text += "\n\n"
-                page_text += cell_text
-                page_text += "\n\n"
+            # Unconditionally increment the cell number; note this
+            # also switches us from 0-based to 1-based indexing.
             cell_num += 1
+            # Do certain things if the cell is effectively empty.
+            if cell is "" or ((not null_as_value) and cell.lower() == "null"):
+                # If the cell is effectively empty, do we skip it or
+                # use it?  The only circumstance under which we skip
+                # is if 'wiki_sess.keep_empty' is exactly False;
+                # otherwise, it's either True or is some string that
+                # we should use as the value for an empty cell.
+                if wiki_sess.keep_empty is False:
+                    continue
+                else:
+                    if isinstance(wiki_sess.keep_empty, str):
+                        cell_text = wiki_sess.keep_empty
+                    else:
+                        cell_text = ""
+            else:
+                cell_text = cell
+            if cell_num == wiki_sess.cat_col:
+                cell_esc = wiki_sess.wiki_escape(massage_string(cell))
+                cell_text = '[[:Category:' + cell_esc + '|' + cell_esc + ']]\n'
+                cell_text += '[[Category:' + cell_esc + ']]'
+                if cell_esc not in categories:
+                    categories.append(cell_esc)
+            # It's [cell_num - 1] below because we switched to 1-based
+            # indexing earlier.
+            page_text += "== " + csv_input.headers[cell_num - 1] + " =="
+            page_text += "\n\n"
+            page_text += cell_text
+            page_text += "\n\n"
         try:
             page_text += std_colophon
             page.save(page_text, std_edit_msg)
