@@ -124,6 +124,15 @@ since it's how the config file is indicated in the first place.
   -c | --config FILE   Use FILE as the run-time job control file;
                        see the "Example config file" section above.
 
+  --null-as-value      When a cell's entire content is the word
+                       "null" (matched case-insensitively), then treat
+                       the cell as having that literal content,
+                       instead of treating the cell as being empty.
+                       (The latter is the default because in most CSV
+                       files, if a cell just contains the word "null",
+                       that's just a kind of conversion error and is
+                       really an indication that the cell is empty.)
+
   --pare N             Convert only 1/N of the CSV rows to wiki pages.
                        This is useful for doing test conversions of a
                        large CSV file, when you don't want to convert
@@ -321,9 +330,14 @@ class CSVInput():
 # that stuff into new methods in WikiSession and select conditional
 # branches based on a new config parameter 'wiki_type'.
 
-def create_pages(wiki_sess, csv_input, pare):
+def create_pages(wiki_sess, csv_input, null_as_value, pare):
     """Create a wiki page in WIKI_SESS for each row in CSV_INPUT.
     The CSV must have at least one row of content.
+
+    If NULL_AS_VALUE, then when a CSV cell's entire content is
+    (case-insensitively) the word "null", treat the cell as having
+    that literal content, instead of treating the cell as empty.
+
     If PARE is not None, it is an integer indicating that only
     1/PARE rows should be handled, and the rest skipped."""
 
@@ -419,7 +433,8 @@ def create_pages(wiki_sess, csv_input, pare):
                 page_name = wiki_sess.wiki_escape(page_name)
                 page = wiki_sess.site_conn.pages[page_name]
                 # Set the contents of each cell to their own section.
-            if cell is not "":
+            if cell is not "" \
+               and (cell.lower() != "null" if not null_as_value else True):
                 # A section can only be created with some text
                 # 
                 cell_text = cell
@@ -525,6 +540,7 @@ def main():
                                    'h?d:c:',
                                    ("help",
                                     "usage",
+                                    "null-as-value",
                                     "pare=",
                                     "delete-matching=",
                                     "config="))
@@ -538,6 +554,7 @@ def main():
     wiki_sess = None
     delete_matching = None
     bad_opt_seen = False
+    null_as_value = False
     pare = None
     for o, a in opts:
         if o in ("-h", "-?", "--help", "--usage"):
@@ -545,6 +562,8 @@ def main():
             sys.exit(0)
         elif o in ("-d", "--delete-matching"):
             delete_matching = a
+        elif o in ("--null-as-value"):
+            null_as_value = True
         elif o in ("--pare"):
             pare = int(a)
         elif o in ("-c", "--config"):
@@ -584,7 +603,8 @@ def main():
             usage(errout=True)
             sys.exit(2)
         try:
-            create_pages(wiki_sess, CSVInput(args[0], config), pare)
+            create_pages(wiki_sess, CSVInput(args[0], config),
+                         null_as_value, pare)
         except IndexError as err:
             sys.stderr.write("ERROR: '%s'\n" % err)
             usage(errout=True)
