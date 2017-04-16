@@ -81,6 +81,25 @@ a sole "[default]" section and the following elements in that section:
                        0.  Omit this, or leave the value blank, to not
                        use categories at all.
 
+  col_order:           If present, a space-separated list of integers
+                       indicating the order in which columns should be
+                       represented as sections on a wiki page.  For
+                       example, if the value is "1 5 2 3 4", then for 
+                       each row, wiki page will have a section for
+                       column 1, followed by a section for column 5,
+                       followed by columns 2, then 3, then 4.
+
+                       You can also use this to omit columns from the
+                       conversion entirely: if you don't list a
+                       column, it simply won't be included at all.
+
+                       Note that reordering or omissions done in this
+                       parameter do not affect column references in
+                       other run-time configuration parameters.  In
+                       other words, all column numbers specified in
+                       the config file refer to the original CSV file,
+                       not to the reordering used for the wiki output.
+
   keep_empty:          If present, still create sections for empty
                        cells in the CSV.  If a value is provided, use
                        that value as the content of the section;
@@ -116,6 +135,7 @@ Here is an example config file:
   title_tmpl: Entry_{1}
   toc_name: List_of_Entries
   cat_col: 5
+  col_order: 1 5 2 3 4
 
 The "[default]" section name at the top must be present.  The .ini
 format always has sections, and for the sake of forward compatibility
@@ -268,8 +288,28 @@ class WikiSession:
         self.cat_col             = int(config.get('cat_col', 0))
         self.keep_empty          = config.get('keep_empty', False)
         self.path_to_api         = config.get('path_to_api')
+        self.col_order           = config.get('col_order', None)
+
         if self.path_to_api is None:
             self.path_to_api = "/"
+
+        if self.col_order is not None:
+            # Convert column reordering to a list of integers.
+            self.col_order = [int(x) for x in self.col_order.split()]
+            # If we have a category column, it may have been moved in
+            # the reordering, so find it again.
+            if self.cat_col:
+                try:
+                    self.cat_col = self.col_order.index(self.cat_col)
+                except ValueError:
+                    # It is a user error to specify a cat_col that is
+                    # dropped due to being omitted in col_order.
+                    sys.stderr.write("ERROR: cat_col %d is not " % self.cat_col
+                                     + "included in col_order list\n")
+                    sys.exit(1)
+                # The config file specifies columns using 1-based
+                # indexing for humans, so we have to add 1 too
+                self.cat_col += 1
 
         # Connect to the site.
         try:
@@ -404,6 +444,11 @@ def create_pages(wiki_sess, csv_input, null_as_value, pare):
           s = unicode(s, "latin-1")
       return unidecode.unidecode_expect_nonascii(s)
 
+    # Put the headers in the config-specified order.
+    reordered_headers = []
+    for i in wiki_sess.col_order:
+        reordered_headers.append(csv_input.headers[i - 1])
+
     # read in csv
     row_num = 0
     for row in csv_input:
@@ -416,11 +461,17 @@ def create_pages(wiki_sess, csv_input, null_as_value, pare):
         if pare is not None and row_num % pare != 0:
             continue
 
+        # Put this row's columns in the config-specified order.
+        reordered_row = []
+        for i in wiki_sess.col_order:
+            reordered_row.append(row[i - 1])
+        reordered_row
+
         # Looping over the cells in the row.  Name the sections
         # according to headers.
         cell_num = 0
         cell_text = None
-        for cell in row:
+        for cell in reordered_row:
             if cell_num == 0:
                 # For this new line, generate a mediawiki page
                 #
@@ -470,7 +521,7 @@ def create_pages(wiki_sess, csv_input, null_as_value, pare):
                     categories.append(cell_esc)
             # It's [cell_num - 1] below because we switched to 1-based
             # indexing earlier.
-            page_text += "== " + csv_input.headers[cell_num - 1] + " =="
+            page_text += "== " + reordered_headers[cell_num - 1] + " =="
             page_text += "\n\n"
             page_text += cell_text
             page_text += "\n\n"
