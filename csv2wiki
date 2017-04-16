@@ -414,7 +414,7 @@ def create_pages(wiki_sess, csv_input, null_as_value, pare):
         page_text = ""
 
         if pare is not None and row_num % pare != 0:
-          continue
+            continue
 
         # Looping over the cells in the row.  Name the sections
         # according to headers.
