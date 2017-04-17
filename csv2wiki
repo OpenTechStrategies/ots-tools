@@ -391,8 +391,13 @@ def create_pages(wiki_sess, csv_input, null_as_value, pare):
     If PARE is not None, it is an integer indicating that only
     1/PARE rows should be handled, and the rest skipped."""
 
-    toc_text = ""
-    categories = []
+    # Map category names to lists, where the elements of each list are
+    # the titles of the pages in the corresponding category.  The
+    # special category "" is used for pages that have no category.
+    # (If categories are not in use at all, or if no pages have a
+    # category, then all pages would be listed under "".)
+    categories = {}
+
     csv2wiki_url = 'https://github.com/OpenTechStrategies/ots-tools/blob/master/csv2wiki'
     # Put a colophon at the end of every page, because users need to
     # know that the page was auto-generated.  For one thing, that
@@ -455,8 +460,8 @@ def create_pages(wiki_sess, csv_input, null_as_value, pare):
         row_num += 1
         page = None
         page_name = None
-        page_title = None
         page_text = ""
+        categorized_p = False
 
         if pare is not None and row_num % pare != 0:
             continue
@@ -517,32 +522,62 @@ def create_pages(wiki_sess, csv_input, null_as_value, pare):
                 cell_esc = wiki_sess.wiki_escape(massage_string(cell))
                 cell_text = '[[:Category:' + cell_esc + '|' + cell_esc + ']]\n'
                 cell_text += '[[Category:' + cell_esc + ']]'
-                if cell_esc not in categories:
-                    categories.append(cell_esc)
+                categorized_p = True
+                if categories.get(cell_esc) is None:
+                    categories[cell_esc] = [page_name]
+                else:
+                    categories[cell_esc].append(page_name)
             # It's [cell_num - 1] below because we switched to 1-based
             # indexing earlier.
             page_text += "== " + reordered_headers[cell_num - 1] + " =="
             page_text += "\n\n"
             page_text += cell_text
             page_text += "\n\n"
+        if not categorized_p:
+            # If this row did not fall into any category, then put it
+            # in the magical category whose name is the empty string.
+            if categories.get("") is None:
+                categories[""] = [page_name]
+            else:
+                categories[""].append(page_name)
         try:
             page_text += std_colophon
             page.save(page_text, std_edit_msg)
         except errors.APIError as err:
             sys.stderr.write("ERROR: unable to write page:\n" + "'%s'" % err)
             sys.exit(1)
-        page_title = page_name
-        toc_text += '* [[' + page_name + ']]\n'
-        print("CREATED PAGE: \"" + page_title + "\"")
+        print("CREATED PAGE: \"" + page_name + "\"")
         
     # create the TOC page.
+    toc_text = ""
+    num_categories = len(categories.keys())
+    for cat in categories.keys():
+        # TODO: Maybe sort categories by the number of items contained
+        # in each category.  And we might want a config option for the
+        # category that should always come last, as people often want
+        # that for the grab-bag misc category.
+        if num_categories > 1:
+            usable_cat = cat
+            if usable_cat == "":
+                # Yup, we're just going to hardcode this right here.
+                # It's a very rare case: the conversion is using
+                # categories, and we have more than one category
+                # available, but some pages had no category.  So what
+                # category should they go in (given that the TOC will
+                # be organized into categories because multiple
+                # categories are available)?  Answer: make one up.
+                usable_cat = "csv2wiki Miscellaneous Default Category"
+            toc_text += "==== " + usable_cat + " ====\n\n"
+        for pnam in categories[cat]:
+            toc_text += '* [[' + pnam + ']]\n'
+        toc_text += "\n"
     toc_text += "\n\n" + std_colophon
     toc_page = wiki_sess.site_conn.pages[wiki_sess.toc_name]
     toc_page.save(toc_text, std_edit_msg)
     
     # generate the category pages
     if wiki_sess.cat_col:
-        for category in categories:
+        for category in categories.keys():
             page = wiki_sess.site_conn.pages['Category:' + category]
             try:
                 page.save("", std_edit_msg)
