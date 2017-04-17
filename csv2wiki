@@ -271,8 +271,7 @@ Dependencies and Troubleshooting
 """
 
 import csv
-from mwclient import Site
-from mwclient import errors
+import mwclient
 import unidecode
 import getopt, sys
 import ConfigParser
@@ -323,7 +322,7 @@ class WikiSession:
 
         # Connect to the site.
         try:
-            self.site_conn = Site(self.wiki_url.split("://"), path=self.path_to_api)
+            self.site_conn = mwclient.Site(self.wiki_url.split("://"), path=self.path_to_api)
         except requests.exceptions.HTTPError as err: 
             sys.stderr.write("ERROR: failed to connect to wiki URL '%s'\n" % self.wiki_url)
             sys.stderr.write("       Error details:\n")
@@ -332,7 +331,7 @@ class WikiSession:
     
         try:
             self.site_conn.login(self.username, self.password)
-        except errors.LoginError as err:
+        except mwclient.errors.LoginError as err:
             sys.stderr.write("ERROR: Unable to log in to wiki; "
                              "check that username and password are correct.\n")
             sys.stderr.write("       Error details:\n")
@@ -552,7 +551,7 @@ def create_pages(wiki_sess, csv_input, null_as_value, pare):
         try:
             page_text += std_colophon
             page.save(page_text, std_edit_msg)
-        except errors.APIError as err:
+        except mwclient.errors.APIError as err:
             sys.stderr.write("ERROR: unable to write page:\n" + "'%s'" % err)
             sys.exit(1)
         print("CREATED PAGE: \"" + page_name + "\"")
@@ -597,7 +596,7 @@ def create_pages(wiki_sess, csv_input, null_as_value, pare):
             page = wiki_sess.site_conn.pages['Category:' + category]
             try:
                 page.save("", std_edit_msg)
-            except errors.APIError as err:
+            except mwclient.errors.APIError as err:
                 sys.stderr.write(
                   "ERROR: unable to create category page '%s':\n" % category)
                 sys.stderr.write("       '%s'\n" % err)
@@ -617,7 +616,7 @@ def delete_pages(wiki_sess, pat):
         # delete with extreme prejudice
         try:
             page.delete()
-        except errors.APIError as err:
+        except mwclient.errors.APIError as err:
             sys.stderr.write("ERROR: unable to delete page:\n      '%s'" % err)
             sys.exit(1)
         print("DELETED PAGE: \"" + result['title'] + "\"")
