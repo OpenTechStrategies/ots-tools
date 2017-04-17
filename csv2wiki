@@ -551,11 +551,10 @@ def create_pages(wiki_sess, csv_input, null_as_value, pare):
     # create the TOC page.
     toc_text = ""
     num_categories = len(categories.keys())
-    for cat in categories.keys():
-        # TODO: Maybe sort categories by the number of items contained
-        # in each category.  And we might want a config option for the
-        # category that should always come last, as people often want
-        # that for the grab-bag misc category.
+    for cat in sorted(categories.keys(), key=lambda k: -len(categories[k])):
+        # A thought: we might want a config option for the category
+        # that should always come last, as people often want to put
+        # the grab-bag misc category last no matter how big it is.
         if num_categories > 1:
             usable_cat = cat
             if usable_cat == "":
@@ -567,6 +566,7 @@ def create_pages(wiki_sess, csv_input, null_as_value, pare):
                 # be organized into categories because multiple
                 # categories are available)?  Answer: make one up.
                 usable_cat = "csv2wiki Miscellaneous Default Category"
+            usable_cat = usable_cat + " (" + str(len(categories[cat])) + ")"
             toc_text += "==== " + usable_cat + " ====\n\n"
         for pnam in categories[cat]:
             toc_text += '* [[' + pnam + ']]\n'
