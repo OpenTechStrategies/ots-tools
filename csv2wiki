@@ -81,6 +81,11 @@ a sole "[default]" section and the following elements in that section:
                        0.  Omit this, or leave the value blank, to not
                        use categories at all.
 
+  last_cat:            The (case-insensitive) name of the category, if
+                       any, that should always be listed last in the
+                       table of contents, even if that category contains
+                       more pages than some other category.
+
   col_order:           If present, a space-separated list of integers
                        indicating the order in which columns should be
                        represented as sections on a wiki page.  For
@@ -286,12 +291,17 @@ class WikiSession:
         self.title_tmpl          = config['title_tmpl']
         self.toc_name            = config['toc_name']
         self.cat_col             = int(config.get('cat_col', 0))
+        self.last_cat            = config.get('last_cat', None)
         self.keep_empty          = config.get('keep_empty', False)
         self.path_to_api         = config.get('path_to_api')
         self.col_order           = config.get('col_order', None)
 
         if self.path_to_api is None:
             self.path_to_api = "/"
+
+        if self.last_cat is not None:
+            # It's always used case-insensitively and w/o surrounding spaces
+            self.last_cat = self.last_cat.strip().lower()
 
         if self.col_order is not None:
             # Convert column reordering to a list of integers.
@@ -550,10 +560,17 @@ def create_pages(wiki_sess, csv_input, null_as_value, pare):
     # create the TOC page.
     toc_text = ""
     num_categories = len(categories.keys())
-    for cat in sorted(categories.keys(), key=lambda k: -len(categories[k])):
-        # A thought: we might want a config option for the category
-        # that should always come last, as people often want to put
-        # the grab-bag misc category last no matter how big it is.
+
+    # This got too big to fit into a lambda anymore :-).
+    def categories_sorter(key):
+        "Return a descending sort value for category KEY."
+        if (wiki_sess.last_cat is not None 
+            and key.strip().lower() == wiki_sess.last_cat):
+            return 0
+        else:
+            return -len(categories[key])
+    
+    for cat in sorted(categories.keys(), key=categories_sorter):
         if num_categories > 1:
             usable_cat = cat
             if usable_cat == "":
