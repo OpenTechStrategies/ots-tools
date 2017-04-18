@@ -81,6 +81,31 @@ a sole "[default]" section and the following elements in that section:
                        0.  Omit this, or leave the value blank, to not
                        use categories at all.
 
+  col_renames:         A possibly multi-line list of column numbers
+                       and the new header names (i.e., section name in
+                       the wiki) that should be used for each column
+                       instead of whatever name is given in the header
+                       row of the CSV.  If renaming more than one
+                       column, put each number and the corresponding
+                       new name on its own line.  For example:
+
+                         col_renames:  12 Executive Summary
+                                       20 Reviewer AA Comments
+                                       21 Reviewer BB Comments
+                                       23 Reviewer CC Comments
+                                       30 Total Score
+
+                       So if in the original CSV, the header for
+                       column 12 were "Exec. Summ.", in the wiki it
+                       would become "Executive Summary", and so on.
+
+                       The column numbers here refer to the original
+                       column numbers in the CSV; any re-ordering done
+                       by the 'col_order' option is applied afterwards.
+
+                       No column number may be repeated; if there are
+                       repeats, the behavior is undefined.
+
   last_cat:            The (case-insensitive) name of the category, if
                        any, that should always be listed last in the
                        table of contents, even if that category contains
@@ -410,6 +435,23 @@ class CSVInput():
                                     quotechar=config.get('quotechar', '"'))
 
         self.headers = next(self.csv_reader)
+
+        # Some columns (sections) might need new names in the wiki.
+        col_renames = config.get('col_renames', None)
+        if col_renames is not None:
+            # Because of the ConfigParser syntax, the format we get the
+            # renames in is one big string, splittable on line breaks
+            # into a list of lines, where each line starts with a number
+            # identifying the column, followed by whitespace, followed by
+            # the new name for that column.
+            for line in col_renames.splitlines():
+                col_num, new_name = line.split(None, 1)
+                # Remember, we're off-by-one from the human-readable
+                # column numbers, because of 0-based indexing.  Also,
+                # if we didn't know the header data was all in the
+                # ASCII subset of UTF-8, we'd convert to/from unicode.
+                # In general, this script needs to DTRT w/ encodings.
+                self.headers[int(col_num) - 1] = new_name
 
     def __iter__(self):
         """Return the underlying iterator for this CSV's rows."""
