@@ -82,12 +82,13 @@ a sole "[default]" section and the following elements in that section:
                        use categories at all.
 
   col_renames:         A possibly multi-line list of column numbers
-                       and the new header names (i.e., section name in
-                       the wiki) that should be used for each column
-                       instead of whatever name is given in the header
-                       row of the CSV.  If renaming more than one
-                       column, put each number and the corresponding
-                       new name on its own line.  For example:
+                       and the corresponding new header names (i.e.,
+                       section names in the wiki) that should be used
+                       for those columns instead of whatever names are
+                       given in the header row of the CSV.  When
+                       renaming more than one column, put each number
+                       and the corresponding new name on its own line.
+                       For example:
 
                          col_renames:  12 Executive Summary
                                        20 Reviewer AA Comments
