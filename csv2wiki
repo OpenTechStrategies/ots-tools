@@ -118,7 +118,7 @@ a sole "[default]" section and the following elements in that section:
                        example, if the value is "1 5 2 3 4", then for 
                        each row, wiki page will have a section for
                        column 1, followed by a section for column 5,
-                       followed by columns 2, then 3, then 4.
+                       followed by column 2, then 3, then 4.
 
                        You can also use this to omit columns from the
                        conversion entirely: if you don't list a
