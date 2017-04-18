@@ -597,6 +597,7 @@ def create_pages(wiki_sess, csv_input, null_as_value, pare):
             toc_text += '* [[' + pnam + ']]\n'
         toc_text += "\n"
     wiki_sess.write_page(wiki_sess.toc_name, toc_text)
+    print("CREATED TOC: \"" + wiki_sess.toc_name + "\"")
     
     # generate the category pages
     if wiki_sess.cat_col:
