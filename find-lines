@@ -80,7 +80,7 @@ def main():
                 key = line.strip()
                 all_lines.setdefault(key, {})[fname] = True
 
-    print("\nLines found in all files:\n")
+    print("Lines found in all files:\n")
     for line in all_lines:
         if len(all_lines[line].keys()) == len(files):
             print('  "%s"' % line)
