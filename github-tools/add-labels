@@ -24,9 +24,9 @@ WIP WARNING: This is a work in progress.  It's still just a toy.
 
 Add labels to tickets in a GitHub repository's issue tracker.  Usage:
 
-  $ ./add-labels --repository ORG/REPOS --infile INPUT_FILE
+  $ ./add-labels --repository OWNER/REPOS --infile INPUT_FILE
 
-ORG/REPOS is something like "solutionguidance/psm".
+OWNER/REPOS is something like "solutionguidance/psm".
 
 INPUT_FILE is a file assigning labels to ticket numbers, whose format
 is yet to be determined, because this script isn't finished yet.
@@ -43,9 +43,10 @@ import sys
 import getopt
 import getpass
 import github
+import github.GithubException
 
 def main():
-    org_name = None
+    owner_name = None
     repos_name = None
     infile = None
     auth_token = None
@@ -64,18 +65,18 @@ def main():
             print(__doc__)
             sys.exit(0)
         elif opt in ("--repository",):
-            org_name, repos_name = optarg.split("/")
+            owner_name, repos_name = optarg.split("/")
         elif opt in ("--infile",):
             if optarg == "-":
                 infile = sys.stdin
             else:
                 infile = open(optarg, "r")
         
-    if (org_name is None) or (repos_name is None):
+    if (owner_name is None) or (repos_name is None):
         sys.stderr.write("ERROR: --repository option must supply "
-                         "org/repos like this:\n")
+                         "owner and repository, like this:\n")
         sys.stderr.write("\n")
-        sys.stderr.write("  organization_name/repository_name\n")
+        sys.stderr.write("  owner_name/repository_name\n")
         sys.stderr.write("\n")
         sys.stderr.write("For example:\n")
         sys.stderr.write("\n")
@@ -93,8 +94,18 @@ def main():
         auth_token = getpass.getpass("GitHub authorization token: ")
 
     g = github.Github(auth_token)
-    org = g.get_organization(org_name)
-    repos = org.get_repo(repos_name)
+
+    # We're taking advantage of some lazy polymorphism here.  Either
+    # "organization/repository" or "username/repository" will work,
+    # even though we only advertize the former.  So far, all of the
+    # methods we're invoking exist for either type of object.  If that
+    # changes, we can make a wrapper object to handle method dispatch.
+    try:
+        owner = g.get_organization(owner_name)
+    except github.GithubException as e:
+        owner = g.get_user(owner_name)
+
+    repos = owner.get_repo(repos_name)
     issues = repos.get_issues(state="all")
 
     # "Is this thing on?"  For now, just print a list of issues.
