@@ -102,7 +102,7 @@ def main():
     # changes, we can make a wrapper object to handle method dispatch.
     try:
         owner = g.get_organization(owner_name)
-    except github.GithubException as e:
+    except github.UnknownObjectException as e:
         owner = g.get_user(owner_name)
 
     repos = owner.get_repo(repos_name)
