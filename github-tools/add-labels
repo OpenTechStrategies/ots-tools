@@ -92,11 +92,12 @@ def main():
         print("")
         auth_token = getpass.getpass("GitHub authorization token: ")
 
-    # "Is this thing on?"  For now, just print a list of issues.
     g = github.Github(auth_token)
     org = g.get_organization(org_name)
     repos = org.get_repo(repos_name)
     issues = repos.get_issues(state="all")
+
+    # "Is this thing on?"  For now, just print a list of issues.
     for issue in issues:
         print("%5d %s: %s" % (issue.number,
                               "{:>8}".format("(" + issue.state + ")"),
