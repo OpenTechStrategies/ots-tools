@@ -108,11 +108,27 @@ def main():
     repos = owner.get_repo(repos_name)
     issues = repos.get_issues(state="all")
 
-    # "Is this thing on?"  For now, just print a list of issues.
+    # "Is this thing on?"  For now, print all the issues and add the
+    # black "REQ-1" label to them (creating the label if necessary).
     for issue in issues:
         print("%5d %s: %s" % (issue.number,
                               "{:>8}".format("(" + issue.state + ")"),
                               issue.title))
+        try:
+            label = repos.get_label("REQ-1")
+        except github.GithubException as e:
+            label = repos.create_label("REQ-1", "000000")
+        issue.add_to_labels(label)
+        # I think it's a bug in PyGithub that even though we added the
+        # label to the issue above, the new label won't be included in
+        # issue.labels below -- even though the label *is* associated
+        # with the issue on GitHub now, and on the next run of this
+        # script you will see the label on the issue.  The local
+        # object should be kept in sync with upstream, but apparently
+        # that's not happening.
+        for label in issue.labels:
+            print("                - label \"%s\"" % label.name)
+
 
 if __name__ == '__main__':
     main()
