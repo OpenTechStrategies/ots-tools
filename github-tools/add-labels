@@ -1,0 +1,106 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+#
+# Add labels to a GitHub repository.
+# github.com/OpenTechStrategies/ots-tools/blob/master/github-tools/add-labels
+#
+# Copyright (C) 2018 Open Tech Strategies, LLC
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+__doc__ = """\
+WIP WARNING: This is a work in progress.  It's still just a toy.
+
+Add labels to tickets in a GitHub repository's issue tracker.  Usage:
+
+  $ ./add-labels --repository ORG/REPOS --infile INPUT_FILE
+
+ORG/REPOS is something like "solutionguidance/psm".
+
+INPUT_FILE is a file assigning labels to ticket numbers, whose format
+is yet to be determined, because this script isn't finished yet.
+(Note: we'll probably have this script auto-create labels as needed,
+rather than bother the user with an explicit label-creation step.)
+
+You'll be prompted for a GitHub authorization token; we may later add
+an option to pass the auth token in via a file.  We don't pass the
+auth token via a command line option because then it could be leaked
+via 'ps' listings, shell history, etc.
+"""
+
+import sys
+import getopt
+import getpass
+import github
+
+def main():
+    org_name = None
+    repos_name = None
+    infile = None
+    auth_token = None
+
+    try:
+        (opts, args) = getopt.getopt(
+            sys.argv[1:], "h?", 
+            ["help", "repository=", "infile=",])
+    except getopt.GetoptError as err:
+        sys.stderr.write(str(err))
+        sys.stderr.write("\n")
+        sys.exit(1)
+
+    for opt, optarg in opts:
+        if opt in ("h", "--help",):
+            print(__doc__)
+            sys.exit(0)
+        elif opt in ("--repository",):
+            org_name, repos_name = optarg.split("/")
+        elif opt in ("--infile",):
+            if optarg == "-":
+                infile = sys.stdin
+            else:
+                infile = open(optarg, "r")
+        
+    if (org_name is None) or (repos_name is None):
+        sys.stderr.write("ERROR: --repository option must supply "
+                         "org/repos like this:\n")
+        sys.stderr.write("\n")
+        sys.stderr.write("  organization_name/repository_name\n")
+        sys.stderr.write("\n")
+        sys.stderr.write("For example:\n")
+        sys.stderr.write("\n")
+        sys.stderr.write("  solutionguidance/psm\n")
+        sys.stderr.write("\n")
+        sys.exit(1)
+
+    auth_token = getpass.getpass("GitHub authorization token ('?' for help): ")
+    if auth_token == "?":
+        print("https://help.github.com/articles/"
+              "creating-a-personal-access-token-for-the-command-line")
+        print("has instructions for generating a GitHub API personal"
+              "access token.")
+        print("")
+        auth_token = getpass.getpass("GitHub authorization token: ")
+
+    # "Is this thing on?"  For now, just print a list of issues.
+    g = github.Github(auth_token)
+    org = g.get_organization(org_name)
+    repos = org.get_repo(repos_name)
+    issues = repos.get_issues(state="all")
+    for issue in issues:
+        print("%5d %s: %s" % (issue.number,
+                              "{:>8}".format("(" + issue.state + ")"),
+                              issue.title))
+
+if __name__ == '__main__':
+    main()
