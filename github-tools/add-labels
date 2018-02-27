@@ -114,12 +114,19 @@ def main():
         print("%5d %s: %s" % (issue.number,
                               "{:>8}".format("(" + issue.state + ")"),
                               issue.title))
-        try:
-            label = repos.get_label("REQ-1")
-        except github.GithubException as e:
-            label = repos.create_label("REQ-1", "000000")
-        issue.add_to_labels(label)
-        # I think it's a bug in PyGithub that even though we added the
+        # Only set any labels if we're operating on the designated
+        # test repository.  (There was an an... accident... in which
+        # on 2018-02-26 I accidentally put the "REQ-1" label on every
+        # issue in solutionguidance/psm.  I've since fixed that, and
+        # and this conditional guards against future such missteps.)
+        if owner_name.lower() == "opentechstrategies" \
+           and repos_name.lower() == "test-repository": 
+            try:
+                label = repos.get_label("REQ-1")
+            except github.GithubException as e:
+                label = repos.create_label("REQ-1", "000000")
+            issue.add_to_labels(label)
+        # I think it's a bug in PyGithub that even if we added the
         # label to the issue above, the new label won't be included in
         # issue.labels below -- even though the label *is* associated
         # with the issue on GitHub now, and on the next run of this
