@@ -55,6 +55,7 @@ leaked via 'ps' listings, shell history, etc.
 import sys
 import getopt
 import getpass
+import textwrap
 import json
 import github
 import github.GithubException
@@ -125,6 +126,40 @@ def main():
 
     repos = owner.get_repo(repos_name)
     commands = json.load(infile)
+
+    # TMP: This next block is just a one-time hack to get us a full
+    # list of issues.  Another possibility would be to abstract this
+    # utility a bit more and make it a Swiss Army knife of issue
+    # manipulation, but I'm not sure yet how much we're going to use
+    # it, so I'm taking the easy way out for now.
+
+    # TextWrapper appears to be buggy.  Leaving this here for
+    # inspection, but not using it.
+    wrapper = textwrap.TextWrapper(initial_indent='  ',
+                                   subsequent_indent='  ',
+                                   replace_whitespace=False,
+                                   drop_whitespace=False,
+                                   break_long_words=False,
+                                   break_on_hyphens=False)
+    issues = repos.get_issues(state="all")  # both open and closed
+    for issue in issues:
+        if issue.pull_request is None:
+            print("* TODO [[https://github.com/solutionguidance/psm/issues/%d][%3d]] %s: %s" 
+                  % (issue.number, 
+                     issue.number,
+                     "{:>8}".format("(" + issue.state + ")"),
+                     issue.title))
+            print("")
+            # The first comment is actually called the 'body', in the API.  
+            # Yes, even though the header of that comment looks exactly
+            # like the header of every other subsequent comment, and
+            # even though the header of that first comment even *says*
+            # "kfogel commented a day ago", nooooo, it's not a comment,
+            # it's a body.  Every body wants to be some body, I guess.
+            print("%s" % "\n  ".join(("\n" + issue.body).splitlines())[1:])
+            # print("%s" % wrapper.fill(issue.body))  # Bleargh, too buggy.
+            print("")
+    sys.exit(0)
 
     for command in commands:
         issue_number = command['issue']
