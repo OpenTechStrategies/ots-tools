@@ -20,9 +20,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 __doc__ = """\
-WIP WARNING: This is a work in progress.  It's still just a toy.
-
-Add labels to tickets in a GitHub repository's issue tracker.  Usage:
+Add and remove labels in a GitHub repository's issue tracker.  Usage:
 
   $ ./add-labels --repository OWNER/REPOS --infile INPUT_FILE
 
@@ -47,9 +45,11 @@ Labels will be created as necessary, always with a black background.
 Removing a label that doesn't exist is merely a no-op, not an error.
 
 Each time you run this script, you will be prompted for a GitHub
-authorization token.  We might later add an option to pass the auth
-token in via a file, but we won't pass it via a command line option
-because then it could be leaked via 'ps' listings, shell history, etc.
+authorization token.  If you don't have a token, or don't know what
+one is, just hit Enter and you'll be pointed to further instructions.
+We might later add an option to pass the auth token in via a file, but
+we won't pass it via a command line option because then it could be
+leaked via 'ps' listings, shell history, etc.
 """
 
 import sys
@@ -103,7 +103,7 @@ def main():
         sys.exit(1)
 
     auth_token = getpass.getpass("GitHub authorization token ('?' for help): ")
-    if auth_token == "?":
+    if auth_token == "?" or auth_token == "":
         print("https://help.github.com/articles/"
               "creating-a-personal-access-token-for-the-command-line")
         print("has instructions for generating a GitHub API personal"
