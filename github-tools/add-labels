@@ -28,20 +28,34 @@ Add labels to tickets in a GitHub repository's issue tracker.  Usage:
 
 OWNER/REPOS is something like "solutionguidance/psm".
 
-INPUT_FILE is a file assigning labels to ticket numbers, whose format
-is yet to be determined, because this script isn't finished yet.
-(Note: we'll probably have this script auto-create labels as needed,
-rather than bother the user with an explicit label-creation step.)
+INPUT_FILE is a file adding/removing labels to/from issue tickets.
+The format of the file is self-explanatory JSON:
 
-You'll be prompted for a GitHub authorization token; we may later add
-an option to pass the auth token in via a file.  We don't pass the
-auth token via a command line option because then it could be leaked
-via 'ps' listings, shell history, etc.
+    [
+        {
+            "issue":         1729,
+            "add-labels":    ["REQ-1", "HARD"],
+            "remove-labels": ["REQ-5", "EASY"]
+	},
+        ...
+    ]
+
+The "issue" field is required, but the other two fields are optional.
+The entries will be processed in order from top to bottom; it's okay
+(though somewhat silly) for the same issue to appear multiple times.
+Labels will be created as necessary, always with a black background.
+Removing a label that doesn't exist is merely a no-op, not an error.
+
+Each time you run this script, you will be prompted for a GitHub
+authorization token.  We might later add an option to pass the auth
+token in via a file, but we won't pass it via a command line option
+because then it could be leaked via 'ps' listings, shell history, etc.
 """
 
 import sys
 import getopt
 import getpass
+import json
 import github
 import github.GithubException
 
@@ -73,7 +87,7 @@ def main():
                 infile = open(optarg, "r")
         
     if (owner_name is None) or (repos_name is None):
-        sys.stderr.write("ERROR: --repository option must supply "
+        sys.stderr.write("ERROR: '--repository' option must supply "
                          "owner and repository, like this:\n")
         sys.stderr.write("\n")
         sys.stderr.write("  owner_name/repository_name\n")
@@ -82,6 +96,10 @@ def main():
         sys.stderr.write("\n")
         sys.stderr.write("  solutionguidance/psm\n")
         sys.stderr.write("\n")
+        sys.exit(1)
+
+    if infile is None:
+        sys.stderr.write("ERROR: '--infile INPUT_FILE' option is required\n")
         sys.exit(1)
 
     auth_token = getpass.getpass("GitHub authorization token ('?' for help): ")
@@ -106,14 +124,15 @@ def main():
         owner = g.get_user(owner_name)
 
     repos = owner.get_repo(repos_name)
-    issues = repos.get_issues(state="all")
+    commands = json.load(infile)
 
-    # "Is this thing on?"  For now, print all the issues and add the
-    # black "REQ-1" label to them (creating the label if necessary).
-    for issue in issues:
-        print("%5d %s: %s" % (issue.number,
-                              "{:>8}".format("(" + issue.state + ")"),
-                              issue.title))
+    for command in commands:
+        issue_number = command['issue']
+        labels_to_add = command.get('add-labels')
+        labels_to_remove = command.get('remove-labels')
+        if (labels_to_add is None) and (labels_to_remove is None):
+            continue
+        issue = repos.get_issue(issue_number)
         # Only set any labels if we're operating on the designated
         # test repository.  (There was an an... accident... in which
         # on 2018-02-26 I accidentally put the "REQ-1" label on every
@@ -121,18 +140,29 @@ def main():
         # and this conditional guards against future such missteps.)
         if owner_name.lower() == "opentechstrategies" \
            and repos_name.lower() == "test-repository": 
-            try:
-                label = repos.get_label("REQ-1")
-            except github.GithubException as e:
-                label = repos.create_label("REQ-1", "000000")
-            issue.add_to_labels(label)
-        # I think it's a bug in PyGithub that even if we added the
-        # label to the issue above, the new label won't be included in
-        # issue.labels below -- even though the label *is* associated
-        # with the issue on GitHub now, and on the next run of this
-        # script you will see the label on the issue.  The local
-        # object should be kept in sync with upstream, but apparently
-        # that's not happening.
+            if labels_to_add is not None:
+                for label_name in labels_to_add:
+                    try:
+                        label = repos.get_label(label_name)
+                    except github.GithubException as e:
+                        label = repos.create_label(label_name, "000000")
+                    issue.add_to_labels(label)
+            labels_found = issue.labels
+            if labels_to_remove is not None:
+                for label_name in labels_to_remove:
+                    if label_name in [x.name for x in labels_found]:
+                        label = repos.get_label(label_name)
+                        issue.remove_from_labels(label)
+        # We have to refetch the issue to see the above changes take
+        # effect in our local object, because it turns out PyGithub
+        # doesn't automatically keep local objects in sync with the
+        # changes made to upstream.  If we didn't re-fetch, then when
+        # we print out the issue and its labels below, we'd see the
+        # label set from *before* the additions/removals done above.
+        issue = repos.get_issue(issue_number)
+        print("%5d %s: %s" % (issue.number,
+                              "{:>8}".format("(" + issue.state + ")"),
+                              issue.title))
         for label in issue.labels:
             print("                - label \"%s\"" % label.name)
 

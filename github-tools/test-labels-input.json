@@ -1,0 +1,17 @@
+[
+    {
+        "issue":         1,
+        "add-labels":    ["REQ-1", "REQ-2", "REQ-3"],
+        "remove-labels": ["REQ-10"]
+    },
+    {
+        "issue":         2,
+        "add-labels":    ["REQ-2", "REQ-4", "REQ-6"],
+        "remove-labels": ["REQ-10"]
+    },
+    {
+        "issue":         3,
+        "add-labels":    ["REQ-3", "REQ-6", "REQ-9"],
+        "remove-labels": ["REQ-10"]
+    }
+]
