@@ -22,14 +22,37 @@
 __doc__ = """\
 Manipulate issues associated with a GitHub repository.  Usage:
 
-  $ ./gh-issues-sak --repository OWNER/REPOS [SUBCOMMAND | --infile INPUT_FILE]
+  $ ./gh-issues-sak --repository OWNER/REPOS \
+                    [SUBCOMMAND [OPTIONS...] | --infile INPUT_FILE]
 
 OWNER/REPOS is something like "solutionguidance/psm".
 
-No SUBCOMMANDs are supported right now; watch this space for more.
+There are two ways to specify gh-issues-sak's behavior.  One is to
+give a SUBCOMMAND saying what to do; the other is to pass an input
+file that lists a bunch of per-issue batch commands.
 
-Specifying batch operations
----------------------------
+Specifying an operation with SUBCOMMAND
+---------------------------------------
+
+The only SUBCOMMAND right now is "org-summary", which lists all issues
+(both open and closed) in an Org Mode format:
+
+  * [[https://github.com/blah/blah/issues/3][3]]   (open): issue title
+
+    body (i.e., first comment) here
+
+  * [[https://github.com/blah/blah/issues/2][1]]   (open): some other title
+
+    body (i.e., first comment) here
+
+  * [[https://github.com/blah/blah/issues/1][1]] (closed): yet another title
+
+    body (i.e., first comment) here
+
+The "org-summary" subcommand takes no options.
+
+Specifying batch operations with --infile INPUT_FILE
+----------------------------------------------------
 
 The '--infile INPUT_FILE' option passes a JSON-format file that gives
 various batch operations to perform on a per-issue basis.  
@@ -73,6 +96,7 @@ import github
 import github.GithubException
 
 def main():
+    subcommand = None
     owner_name = None
     repos_name = None
     infile = None
@@ -111,8 +135,19 @@ def main():
         sys.stderr.write("\n")
         sys.exit(1)
 
-    if infile is None:
-        sys.stderr.write("ERROR: '--infile INPUT_FILE' option is required\n")
+    if len(args) == 1:
+        subcommand = args[0]
+    elif len(args) > 1:
+        sys.stderr.write("ERROR: too many subcommands given:\n"
+                         "       '%s'\n" % args)
+        sys.exit(1)
+
+    if (subcommand is not None) and (infile is not None):
+        sys.stderr.write("ERROR: cannot pass both subcommand and input file\n")
+        sys.exit(1)
+        
+    if (subcommand is None) and (infile is None):
+        sys.stderr.write("ERROR: either subcommand or input file required\n")
         sys.exit(1)
 
     auth_token = getpass.getpass("GitHub authorization token ('?' for help): ")
@@ -137,47 +172,87 @@ def main():
         owner = g.get_user(owner_name)
 
     repos = owner.get_repo(repos_name)
-    commands = json.load(infile)
 
-    for command in commands:
-        issue_number = command['issue']
-        labels_to_add = command.get('add-labels')
-        labels_to_remove = command.get('remove-labels')
-        if (labels_to_add is None) and (labels_to_remove is None):
-            continue
-        issue = repos.get_issue(issue_number)
-        # Only set any labels if we're operating on the designated
-        # test repository.  (There was an an... accident... in which
-        # on 2018-02-26 I accidentally put the "REQ-1" label on every
-        # issue in solutionguidance/psm.  I've since fixed that, and
-        # and this conditional guards against future such missteps.)
-        if owner_name.lower() == "opentechstrategies" \
-           and repos_name.lower() == "test-repository": 
-            if labels_to_add is not None:
-                for label_name in labels_to_add:
-                    try:
-                        label = repos.get_label(label_name)
-                    except github.GithubException as e:
-                        label = repos.create_label(label_name, "000000")
-                    issue.add_to_labels(label)
-            labels_found = issue.labels
-            if labels_to_remove is not None:
-                for label_name in labels_to_remove:
-                    if label_name in [x.name for x in labels_found]:
-                        label = repos.get_label(label_name)
-                        issue.remove_from_labels(label)
-        # We have to refetch the issue to see the above changes take
-        # effect in our local object, because it turns out PyGithub
-        # doesn't automatically keep local objects in sync with the
-        # changes made to upstream.  If we didn't re-fetch, then when
-        # we print out the issue and its labels below, we'd see the
-        # label set from *before* the additions/removals done above.
-        issue = repos.get_issue(issue_number)
-        print("%5d %s: %s" % (issue.number,
-                              "{:>8}".format("(" + issue.state + ")"),
-                              issue.title))
-        for label in issue.labels:
-            print("                - label \"%s\"" % label.name)
+    if subcommand is not None:
+        if subcommand == "org-summary":
+            # TextWrapper appears to be buggy; at least, this wrapper
+            # doesn't have the effects I'd expect it to on an issue
+            # body.  Leaving this here for now, but not using it.
+            #
+            # import textwrap
+            # wrapper = textwrap.TextWrapper(initial_indent='  ',
+            #                                subsequent_indent='  ',
+            #                                replace_whitespace=False,
+            #                                drop_whitespace=False,
+            #                                break_long_words=False,
+            #                                break_on_hyphens=False)
+            issues = repos.get_issues(state="all")  # both open and closed
+            for issue in issues:
+                if issue.pull_request is None:
+                    print("* [[https://github.com/%s/%s/issues/%d][%3d]] %s: %s" 
+                          % (owner_name, repos_name, issue.number, issue.number,
+                             "{:>8}".format("(" + issue.state + ")"), 
+                             issue.title))
+                    print("")
+                    # The first comment is actually called the 'body',
+                    # in the API.  Yes, even though the header of that
+                    # comment looks exactly like the header of every
+                    # other subsequent comment, and even though the
+                    # header of that first comment even *says* "kfogel
+                    # commented a day ago", nooooo, it's not a
+                    # comment, it's a body.  Every body wants to be
+                    # some body, I guess.
+                    #
+                    # See earlier about how we're not using textwrap right now.
+                    # print("%s" % wrapper.fill(issue.body))
+                    print("%s" 
+                          % "\n  ".join(("\n" + issue.body).splitlines())[1:])
+                    print("")
+
+        else:
+            sys.stderr.write("ERROR: unknown subcommand '%s'\n" % subcommand)
+            sys.exit(1)
+    else:
+        commands = json.load(infile)
+        for command in commands:
+            issue_number = command['issue']
+            labels_to_add = command.get('add-labels')
+            labels_to_remove = command.get('remove-labels')
+            if (labels_to_add is None) and (labels_to_remove is None):
+                continue
+            issue = repos.get_issue(issue_number)
+            # Only set any labels if we're operating on the designated
+            # test repository.  (There was an an... accident... in which
+            # on 2018-02-26 I accidentally put the "REQ-1" label on every
+            # issue in solutionguidance/psm.  I've since fixed that, and
+            # and this conditional guards against future such missteps.)
+            if owner_name.lower() == "opentechstrategies" \
+               and repos_name.lower() == "test-repository": 
+                if labels_to_add is not None:
+                    for label_name in labels_to_add:
+                        try:
+                            label = repos.get_label(label_name)
+                        except github.GithubException as e:
+                            label = repos.create_label(label_name, "000000")
+                        issue.add_to_labels(label)
+                labels_found = issue.labels
+                if labels_to_remove is not None:
+                    for label_name in labels_to_remove:
+                        if label_name in [x.name for x in labels_found]:
+                            label = repos.get_label(label_name)
+                            issue.remove_from_labels(label)
+            # We have to refetch the issue to see the above changes take
+            # effect in our local object, because it turns out PyGithub
+            # doesn't automatically keep local objects in sync with the
+            # changes made to upstream.  If we didn't re-fetch, then when
+            # we print out the issue and its labels below, we'd see the
+            # labels from *before* any additions/removals done above.
+            issue = repos.get_issue(issue_number)
+            print("%5d %s: %s" % (issue.number,
+                                  "{:>8}".format("(" + issue.state + ")"),
+                                  issue.title))
+            for label in issue.labels:
+                print("                - label \"%s\"" % label.name)
 
 
 if __name__ == '__main__':
