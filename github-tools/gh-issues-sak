@@ -221,26 +221,19 @@ def main():
             if (labels_to_add is None) and (labels_to_remove is None):
                 continue
             issue = repos.get_issue(issue_number)
-            # Only set any labels if we're operating on the designated
-            # test repository.  (There was an an... accident... in which
-            # on 2018-02-26 I accidentally put the "REQ-1" label on every
-            # issue in solutionguidance/psm.  I've since fixed that, and
-            # and this conditional guards against future such missteps.)
-            if owner_name.lower() == "opentechstrategies" \
-               and repos_name.lower() == "test-repository": 
-                if labels_to_add is not None:
-                    for label_name in labels_to_add:
-                        try:
-                            label = repos.get_label(label_name)
-                        except github.GithubException as e:
-                            label = repos.create_label(label_name, "000000")
-                        issue.add_to_labels(label)
-                labels_found = issue.labels
-                if labels_to_remove is not None:
-                    for label_name in labels_to_remove:
-                        if label_name in [x.name for x in labels_found]:
-                            label = repos.get_label(label_name)
-                            issue.remove_from_labels(label)
+            if labels_to_add is not None:
+                for label_name in labels_to_add:
+                    try:
+                        label = repos.get_label(label_name)
+                    except github.GithubException as e:
+                        label = repos.create_label(label_name, "000000")
+                    issue.add_to_labels(label)
+            labels_found = issue.labels
+            if labels_to_remove is not None:
+                for label_name in labels_to_remove:
+                    if label_name in [x.name for x in labels_found]:
+                        label = repos.get_label(label_name)
+                        issue.remove_from_labels(label)
             # We have to refetch the issue to see the above changes take
             # effect in our local object, because it turns out PyGithub
             # doesn't automatically keep local objects in sync with the
