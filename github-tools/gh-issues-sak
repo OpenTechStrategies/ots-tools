@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
-# Add labels to a GitHub repository.
-# github.com/OpenTechStrategies/ots-tools/blob/master/github-tools/add-labels
+# GitHub issues "Swiss Army knife": manipulate a GitHub repository's issues.
+# github.com/OpenTechStrategies/ots-tools/blob/master/github-tools/gh-issues-sak
 #
 # Copyright (C) 2018 Open Tech Strategies, LLC
 #
@@ -20,14 +20,24 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 __doc__ = """\
-Add and remove labels in a GitHub repository's issue tracker.  Usage:
+Manipulate issues associated with a GitHub repository.  Usage:
 
-  $ ./add-labels --repository OWNER/REPOS --infile INPUT_FILE
+  $ ./gh-issues-sak --repository OWNER/REPOS [SUBCOMMAND | --infile INPUT_FILE]
 
 OWNER/REPOS is something like "solutionguidance/psm".
 
-INPUT_FILE is a file adding/removing labels to/from issue tickets.
-The format of the file is self-explanatory JSON:
+No SUBCOMMANDs are supported right now; watch this space for more.
+
+Specifying batch operations
+---------------------------
+
+The '--infile INPUT_FILE' option passes a JSON-format file that gives
+various batch operations to perform on a per-issue basis.  
+
+The top level structure is a list, and each element of the list is a
+dictionary.  The only required entry in that dictionary is "issue",
+whose value is the issue number (an integer).  The other dictionary
+entries are optional and represent operations to perform on the issue:
 
     [
         {
@@ -38,11 +48,14 @@ The format of the file is self-explanatory JSON:
         ...
     ]
 
-The "issue" field is required, but the other two fields are optional.
-The entries will be processed in order from top to bottom; it's okay
+List elements are processed in order from top to bottom; it's okay
 (though somewhat silly) for the same issue to appear multiple times.
+
 Labels will be created as necessary, always with a black background.
 Removing a label that doesn't exist is merely a no-op, not an error.
+
+GitHub authentication and authorization
+---------------------------------------
 
 Each time you run this script, you will be prompted for a GitHub
 authorization token.  If you don't have a token, or don't know what
