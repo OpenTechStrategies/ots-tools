@@ -25,7 +25,7 @@ Manipulate issues associated with a GitHub repository.  Usage:
   $ ./gh-issues-sak --repository OWNER/REPOS \
                     [SUBCOMMAND [OPTIONS...] | --infile INPUT_FILE]
 
-OWNER/REPOS is something like "solutionguidance/psm".
+OWNER/REPOS is something like "opentechstrategies/ots-tools".
 
 There are two ways to specify gh-issues-sak's behavior.  One is to
 give a SUBCOMMAND saying what to do; the other is to pass an input
