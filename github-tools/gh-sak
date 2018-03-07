@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
-# GitHub issues "Swiss Army knife": manipulate a GitHub repository's issues.
-# github.com/OpenTechStrategies/ots-tools/blob/master/github-tools/gh-issues-sak
+# gh-sak: A GitHub "Swiss Army knife" for doing batch manipulation of
+#         things (issues, labels, etc) in a GitHub repository.
+# 
+# github.com/OpenTechStrategies/ots-tools/blob/master/github-tools/gh-sak
 #
 # Copyright (C) 2018 Open Tech Strategies, LLC
 #
@@ -22,14 +24,14 @@
 __doc__ = """\
 Manipulate issues associated with a GitHub repository.  Usage:
 
-  $ ./gh-issues-sak --repository OWNER/REPOS \
-                    [SUBCOMMAND [OPTIONS...] | --infile INPUT_FILE]
+  $ ./gh-sak --repository OWNER/REPOS 
+             [SUBCOMMAND [OPTIONS...] | --infile INPUT_FILE]
 
 OWNER/REPOS is something like "opentechstrategies/ots-tools".
 
-There are two ways to specify gh-issues-sak's behavior.  One is to
-give a SUBCOMMAND saying what to do; the other is to pass an input
-file that lists a bunch of per-issue batch commands.
+There are two ways to specify gh-sak's behavior.  One is to give a
+SUBCOMMAND saying what to do; the other is to pass an input file that
+lists a bunch of per-issue batch commands.
 
 Specifying an operation with SUBCOMMAND
 ---------------------------------------
