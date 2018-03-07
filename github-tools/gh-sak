@@ -25,19 +25,19 @@ __doc__ = """\
 Manipulate issues associated with a GitHub repository.  Usage:
 
   $ ./gh-sak --repository OWNER/REPOS 
-             [SUBCOMMAND [OPTIONS...] | --infile INPUT_FILE]
+             [COMMAND [OPTIONS...] | --cmdfile COMMANDS_FILE]
 
 OWNER/REPOS is something like "opentechstrategies/ots-tools".
 
 There are two ways to specify gh-sak's behavior.  One is to give a
-SUBCOMMAND saying what to do; the other is to pass an input file that
-lists a bunch of per-issue batch commands.
+COMMAND saying what to do; the other is to pass a file of commands
+to be batch-processed.
 
-Specifying an operation with SUBCOMMAND
----------------------------------------
+Specifying an operation with COMMAND
+------------------------------------
 
-The only SUBCOMMAND right now is "org-summary", which lists all issues
-(both open and closed) in an Org Mode format:
+The only COMMAND right now is "issues-summary-org", which lists all
+issues (both open and closed) in an Emacs Org Mode format:
 
   * [[https://github.com/blah/blah/issues/3][3]]   (open): issue title
 
@@ -51,12 +51,12 @@ The only SUBCOMMAND right now is "org-summary", which lists all issues
 
     body (i.e., first comment) here
 
-The "org-summary" subcommand takes no options.
+The "issues-summary-org" command takes no options.
 
-Specifying batch operations with --infile INPUT_FILE
-----------------------------------------------------
+Specifying batch operations with --cmdfile COMMANDS_FILE
+--------------------------------------------------------
 
-The '--infile INPUT_FILE' option passes a JSON-format file that gives
+The '--cmdfile COMMANDS_FILE' option passes a JSON-format file that gives
 various batch operations to perform on a per-issue basis.  
 
 The top level structure is a list, and each element of the list is a
@@ -98,16 +98,16 @@ import github
 import github.GithubException
 
 def main():
-    subcommand = None
+    single_cmd = None
     owner_name = None
     repos_name = None
-    infile = None
+    cmdfile = None
     auth_token = None
 
     try:
         (opts, args) = getopt.getopt(
             sys.argv[1:], "h?", 
-            ["help", "repository=", "infile=",])
+            ["help", "repository=", "cmdfile=",])
     except getopt.GetoptError as err:
         sys.stderr.write(str(err))
         sys.stderr.write("\n")
@@ -119,11 +119,11 @@ def main():
             sys.exit(0)
         elif opt in ("--repository",):
             owner_name, repos_name = optarg.split("/")
-        elif opt in ("--infile",):
+        elif opt in ("--cmdfile",):
             if optarg == "-":
-                infile = sys.stdin
+                cmdfile = sys.stdin
             else:
-                infile = open(optarg, "r")
+                cmdfile = open(optarg, "r")
         
     if (owner_name is None) or (repos_name is None):
         sys.stderr.write("ERROR: '--repository' option must supply "
@@ -138,18 +138,18 @@ def main():
         sys.exit(1)
 
     if len(args) == 1:
-        subcommand = args[0]
+        single_cmd = args[0]
     elif len(args) > 1:
-        sys.stderr.write("ERROR: too many subcommands given:\n"
+        sys.stderr.write("ERROR: too many commands given:\n"
                          "       '%s'\n" % args)
         sys.exit(1)
 
-    if (subcommand is not None) and (infile is not None):
-        sys.stderr.write("ERROR: cannot pass both subcommand and input file\n")
+    if (single_cmd is not None) and (cmdfile is not None):
+        sys.stderr.write("ERROR: cannot pass both command and commands file\n")
         sys.exit(1)
         
-    if (subcommand is None) and (infile is None):
-        sys.stderr.write("ERROR: either subcommand or input file required\n")
+    if (single_cmd is None) and (cmdfile is None):
+        sys.stderr.write("ERROR: either command or commands file required\n")
         sys.exit(1)
 
     auth_token = getpass.getpass("GitHub authorization token ('?' for help): ")
@@ -175,8 +175,8 @@ def main():
 
     repos = owner.get_repo(repos_name)
 
-    if subcommand is not None:
-        if subcommand == "org-summary":
+    if single_cmd is not None:
+        if single_cmd == "issues-summary-org":
             # TextWrapper appears to be buggy; at least, this wrapper
             # doesn't have the effects I'd expect it to on an issue
             # body.  Leaving this here for now, but not using it.
@@ -212,10 +212,10 @@ def main():
                     print("")
 
         else:
-            sys.stderr.write("ERROR: unknown subcommand '%s'\n" % subcommand)
+            sys.stderr.write("ERROR: unknown command '%s'\n" % single_cmd)
             sys.exit(1)
     else:
-        commands = json.load(infile)
+        commands = json.load(cmdfile)
         for command in commands:
             issue_number = command['issue']
             labels_to_add = command.get('add-labels')
