@@ -55,6 +55,10 @@ Available COMMANDs
   
       body (i.e., first comment) here
   
+    ** LABELS
+       - some label name
+       - another label name
+
     * [[https://github.com/blah/blah/issues/2][1]]   (open): other title
   
       other body (i.e., first comment) here
@@ -62,6 +66,10 @@ Available COMMANDs
     * [[https://github.com/blah/blah/issues/1][1]] (closed): another title
   
       another body (i.e., first comment) here
+
+    ** LABELS
+       - some label name
+       - yet a third distinct label name
 
 * "list-labels"  (no input file)
 
@@ -270,8 +278,8 @@ def main():
                 for label in issue.labels:
                     if any_labels is False:
                         any_labels = True
-                        print("** LABELS:")
-                    print("   - \"%s\"" % label.name)
+                        print("** LABELS")
+                    print("   - %s" % label.name)
     elif command == "list-labels":
         labels = repos.get_labels()
         for label in labels:
