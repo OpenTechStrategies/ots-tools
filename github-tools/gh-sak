@@ -266,6 +266,12 @@ def main():
                 print("%s" 
                       % "\n  ".join(("\n" + issue.body).splitlines())[1:])
                 print("")
+                any_labels = False
+                for label in issue.labels:
+                    if any_labels is False:
+                        any_labels = True
+                        print("** LABELS:")
+                    print("   - \"%s\"" % label.name)
     elif command == "list-labels":
         labels = repos.get_labels()
         for label in labels:
