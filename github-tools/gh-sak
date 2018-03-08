@@ -24,60 +24,14 @@
 __doc__ = """\
 Manipulate issues associated with a GitHub repository.  Usage:
 
-  $ ./gh-sak --repository OWNER/REPOS 
-             [COMMAND [OPTIONS...] | --cmdfile COMMANDS_FILE]
+  $ ./gh-sak --repository OWNER/REPOS COMMAND [ --infile INPUT_FILE ]
 
 OWNER/REPOS is something like "opentechstrategies/ots-tools".
 
-There are two ways to specify gh-sak's behavior.  One is to give a
-COMMAND saying what to do; the other is to pass a file of commands
-to be batch-processed.
-
-Specifying an operation with COMMAND
-------------------------------------
-
-The only COMMAND right now is "issues-summary-org", which lists all
-issues (both open and closed) in an Emacs Org Mode format:
-
-  * [[https://github.com/blah/blah/issues/3][3]]   (open): issue title
-
-    body (i.e., first comment) here
-
-  * [[https://github.com/blah/blah/issues/2][1]]   (open): some other title
-
-    body (i.e., first comment) here
-
-  * [[https://github.com/blah/blah/issues/1][1]] (closed): yet another title
-
-    body (i.e., first comment) here
-
-The "issues-summary-org" command takes no options.
-
-Specifying batch operations with --cmdfile COMMANDS_FILE
---------------------------------------------------------
-
-The '--cmdfile COMMANDS_FILE' option passes a JSON-format file that gives
-various batch operations to perform on a per-issue basis.  
-
-The top level structure is a list, and each element of the list is a
-dictionary.  The only required entry in that dictionary is "issue",
-whose value is the issue number (an integer).  The other dictionary
-entries are optional and represent operations to perform on the issue:
-
-    [
-        {
-            "issue":         1729,
-            "add-labels":    ["REQ-1", "HARD"],
-            "remove-labels": ["REQ-5", "EASY"]
-	},
-        ...
-    ]
-
-List elements are processed in order from top to bottom; it's okay
-(though somewhat silly) for the same issue to appear multiple times.
-
-Labels will be created as necessary, always with a black background.
-Removing a label that doesn't exist is merely a no-op, not an error.
+Some COMMANDs, e.g., listing all issues, require no further specification.
+Others COMMANDs, such as determining different labels across a bunch
+of issues, operate batch-style on an input set passed via INPUT_FILE.
+INPUT_FILE is a JSON-format file whose structure depends on COMMAND.
 
 GitHub authentication and authorization
 ---------------------------------------
@@ -88,6 +42,99 @@ one is, just hit Enter and you'll be pointed to further instructions.
 We might later add an option to pass the auth token in via a file, but
 we won't pass it via a command line option because then it could be
 leaked via 'ps' listings, shell history, etc.
+
+Available COMMANDs
+------------------
+
+* "issues-summary-org"  (no input file)
+
+  This lists all issues, both open and closed, in an Emacs Org Mode
+  format, like so:
+
+    * [[https://github.com/blah/blah/issues/3][3]]   (open): issue title
+  
+      body (i.e., first comment) here
+  
+    * [[https://github.com/blah/blah/issues/2][1]]   (open): other title
+  
+      other body (i.e., first comment) here
+  
+    * [[https://github.com/blah/blah/issues/1][1]] (closed): another title
+  
+      another body (i.e., first comment) here
+
+* "do-issues"  (input file required)
+
+  Manipulate issues in various ways.  Right now, the only manipulation
+  supported is adding/removing existing labels to/from issues.  (See
+  also the "do-labels" command.)
+
+  The top level structure of the JSON is a list.  Each element of that
+  list is a dictionary.  The only required entry in each dictionary is
+  "issue", whose value is an issue number (an integer), and each
+  remaining entry is an action to take regarding that issue.  The two
+  actions implemented so far are "add-labels" and "remove-labels",
+  and the value in both cases is a list of label names (strings).
+  For example:
+
+    [
+        {
+            "issue":         1729,
+            "add-labels":    ["REQ-1", "HARD"],
+            "remove-labels": ["REQ-5", "EASY"]
+	},
+        ...
+    ]
+
+  Labels will be created as necessary, always with a gray background,
+  but if a label already exists its current color will not be changed.
+
+  Removing a label that doesn't exist is merely a no-op, not an error.
+
+  List elements are processed in order from top to bottom; it's fine,
+  though somewhat silly, for the same issue to appear multiple times.
+
+* "do-labels"  (input file required)
+
+  Create, delete, rename, and change colors of labels.
+
+  The JSON is a list of sublists:
+
+    [ [ OLD_LABEL_NAME, NEW_LABEL_NAME [, COLOR ] ...]
+
+  Each sublist can be used to create a new label, delete an existing
+  label, rename a label, change the color of a label, or rename and
+  change color simultaneously.  This logic chart explains how:
+
+    OLD_LABEL_NAME null:
+      NEW_LABEL_NAME null:
+        COLOR null:     ==>  ERROR
+        COLOR "color":  ==>  ERROR
+      NEW_LABEL_NAME "new_name":
+        COLOR null:     ==>  create new label with default gray ("e2e2e2")
+        COLOR "color":  ==>  create new label with color "color"
+    OLD_LABEL_NAME "old_name"
+      NEW_LABEL_NAME null:
+        COLOR null:     ==>  delete old label
+        COLOR "color":  ==>  give old label new color "color"
+      NEW_LABEL_NAME "new_name":
+        COLOR null:     ==>  rename label but preserve old color
+        COLOR "color":  ==>  rename label and give it new color "color"
+
+  The top-level list is processed in order, and each element takes
+  effect as soon as it is processed.
+
+Notes
+-----
+
+This code is not librarized yet.  To be a library, it would need at
+least these changes:
+
+   - All the errors followed by sys.exit(1) would need to become
+     exceptions raised.
+
+   - The inline print statements would need to be omitted or become
+     some kind of progress callback.
 """
 
 import sys
@@ -97,17 +144,27 @@ import json
 import github
 import github.GithubException
 
+def get_input(infile):
+    """Return the data structure represented by the JSON in INFILE.
+    If INFILE is None, exit with usage recommendation and error."""
+    if infile is None:
+        sys.stderr.write("ERROR: "
+                         "'--input-file INPUT_FILE' required\n"
+                         "       (run with --help to see usage)\n")
+        sys.exit(1)
+    return json.load(infile)
+
 def main():
-    single_cmd = None
+    command = None
     owner_name = None
     repos_name = None
-    cmdfile = None
+    infile = None
     auth_token = None
 
     try:
         (opts, args) = getopt.getopt(
             sys.argv[1:], "h?", 
-            ["help", "repository=", "cmdfile=",])
+            ["help", "repository=", "infile=",])
     except getopt.GetoptError as err:
         sys.stderr.write(str(err))
         sys.stderr.write("\n")
@@ -119,11 +176,11 @@ def main():
             sys.exit(0)
         elif opt in ("--repository",):
             owner_name, repos_name = optarg.split("/")
-        elif opt in ("--cmdfile",):
+        elif opt in ("--infile",):
             if optarg == "-":
-                cmdfile = sys.stdin
+                infile = sys.stdin
             else:
-                cmdfile = open(optarg, "r")
+                infile = open(optarg, "r")
         
     if (owner_name is None) or (repos_name is None):
         sys.stderr.write("ERROR: '--repository' option must supply "
@@ -138,18 +195,14 @@ def main():
         sys.exit(1)
 
     if len(args) == 1:
-        single_cmd = args[0]
-    elif len(args) > 1:
-        sys.stderr.write("ERROR: too many commands given:\n"
-                         "       '%s'\n" % args)
+        command = args[0]
+    elif len(args) < 1:
+        sys.stderr.write("ERROR: "
+                         "command required (run with --help to see usage)\n")
         sys.exit(1)
-
-    if (single_cmd is not None) and (cmdfile is not None):
-        sys.stderr.write("ERROR: cannot pass both command and commands file\n")
-        sys.exit(1)
-        
-    if (single_cmd is None) and (cmdfile is None):
-        sys.stderr.write("ERROR: either command or commands file required\n")
+    else:
+        sys.stderr.write("ERROR: "
+                         "too many commands (run with --help to see usage)\n")
         sys.exit(1)
 
     auth_token = getpass.getpass("GitHub authorization token ('?' for help): ")
@@ -175,51 +228,46 @@ def main():
 
     repos = owner.get_repo(repos_name)
 
-    if single_cmd is not None:
-        if single_cmd == "issues-summary-org":
-            # TextWrapper appears to be buggy; at least, this wrapper
-            # doesn't have the effects I'd expect it to on an issue
-            # body.  Leaving this here for now, but not using it.
-            #
-            # import textwrap
-            # wrapper = textwrap.TextWrapper(initial_indent='  ',
-            #                                subsequent_indent='  ',
-            #                                replace_whitespace=False,
-            #                                drop_whitespace=False,
-            #                                break_long_words=False,
-            #                                break_on_hyphens=False)
-            issues = repos.get_issues(state="all")  # both open and closed
-            for issue in issues:
-                if issue.pull_request is None:
-                    print("* [[https://github.com/%s/%s/issues/%d][%3d]] %s: %s" 
-                          % (owner_name, repos_name, issue.number, issue.number,
-                             "{:>8}".format("(" + issue.state + ")"), 
-                             issue.title))
-                    print("")
-                    # The first comment is actually called the 'body',
-                    # in the API.  Yes, even though the header of that
-                    # comment looks exactly like the header of every
-                    # other subsequent comment, and even though the
-                    # header of that first comment even *says* "kfogel
-                    # commented a day ago", nooooo, it's not a
-                    # comment, it's a body.  Every body wants to be
-                    # some body, I guess.
-                    #
-                    # See earlier about how we're not using textwrap right now.
-                    # print("%s" % wrapper.fill(issue.body))
-                    print("%s" 
-                          % "\n  ".join(("\n" + issue.body).splitlines())[1:])
-                    print("")
-
-        else:
-            sys.stderr.write("ERROR: unknown command '%s'\n" % single_cmd)
-            sys.exit(1)
-    else:
-        commands = json.load(cmdfile)
-        for command in commands:
-            issue_number = command['issue']
-            labels_to_add = command.get('add-labels')
-            labels_to_remove = command.get('remove-labels')
+    if command == "issues-summary-org":
+        # TextWrapper appears to be buggy; at least, this wrapper
+        # doesn't have the effects I'd expect it to on an issue
+        # body.  Leaving this here for now, but not using it.
+        #
+        # import textwrap
+        # wrapper = textwrap.TextWrapper(initial_indent='  ',
+        #                                subsequent_indent='  ',
+        #                                replace_whitespace=False,
+        #                                drop_whitespace=False,
+        #                                break_long_words=False,
+        #                                break_on_hyphens=False)
+        issues = repos.get_issues(state="all")  # both open and closed
+        for issue in issues:
+            if issue.pull_request is None:
+                print("* [[https://github.com/%s/%s/issues/%d][%3d]] %s: %s" 
+                      % (owner_name, repos_name, issue.number, issue.number,
+                         "{:>8}".format("(" + issue.state + ")"), 
+                         issue.title))
+                print("")
+                # The first comment is actually called the 'body',
+                # in the API.  Yes, even though the header of that
+                # comment looks exactly like the header of every
+                # other subsequent comment, and even though the
+                # header of that first comment even *says* "kfogel
+                # commented a day ago", nooooo, it's not a
+                # comment, it's a body.  Every body wants to be
+                # some body, I guess.
+                #
+                # See earlier about how we're not using textwrap right now.
+                # print("%s" % wrapper.fill(issue.body))
+                print("%s" 
+                      % "\n  ".join(("\n" + issue.body).splitlines())[1:])
+                print("")
+    elif command == "do-issues":
+        elements = get_input(infile)
+        for element in elements:
+            issue_number = element['issue']
+            labels_to_add = element.get('add-labels')
+            labels_to_remove = element.get('remove-labels')
             if (labels_to_add is None) and (labels_to_remove is None):
                 continue
             issue = repos.get_issue(issue_number)
@@ -228,7 +276,7 @@ def main():
                     try:
                         label = repos.get_label(label_name)
                     except github.GithubException as e:
-                        label = repos.create_label(label_name, "000000")
+                        label = repos.create_label(label_name, "e2e2e2")
                     issue.add_to_labels(label)
             labels_found = issue.labels
             if labels_to_remove is not None:
@@ -248,6 +296,68 @@ def main():
                                   issue.title))
             for label in issue.labels:
                 print("                - label \"%s\"" % label.name)
+    elif command == "do-labels":
+        elements = get_input(infile)
+        for sublist in elements:
+            old_label_name = None
+            new_label_name = None
+            color = None
+            if len(sublist) == 3:
+                old_label_name = sublist[0]
+                new_label_name = sublist[1]
+                color = sublist[2]
+            elif len(sublist) == 2:
+                old_label_name = sublist[0]
+                new_label_name = sublist[1]
+            elif len(sublist) > 3:
+                sys.stderr.write("ERROR: label sublist too long:\n")
+                sys.stderr.write("       %s\n" % sublist)
+                sys.exit(1)
+            else:
+                sys.stderr.write("ERROR: label sublist too short:\n")
+                sys.stderr.write("       %s\n" % sublist)
+                sys.exit(1)
+            if (color is not None) and (color[0] == "#"):
+                color = color[1:]
+            try:
+                old_label = repos.get_label(old_label_name)
+            except github.UnknownObjectException as e:
+                old_label = None
+            if old_label is None:
+                if old_label_name is not None:
+                    sys.stderr.write("WARNING: label '%s' not found\n" 
+                                     % old_label_name)
+                elif new_label_name is None:
+                    sys.stderr.write("ERROR: "
+                                     "neither old nor new label name given\n")
+                    sys.exit(1)
+                else:
+                    if color is None:
+                        color = "e2e2e2"
+                    repos.create_label(new_label_name, color)
+                    print("CREATED label '%s'" % new_label_name)
+            else: # we have an existing label
+                if new_label_name is None:
+                    if color is None:
+                        old_label.delete()
+                        print("DELETED label '%s'" % old_label_name)
+                    else:
+                        old_label.edit(old_label_name, color)
+                        print("CHANGED label '%s' color to '#%s'" 
+                              % (old_label_name, color))
+                else: # we have a new label name too
+                    if color is None:
+                        color = old_label.color
+                    old_label.edit(new_label_name, color)
+                    if color != old_label.color:
+                        print("RENAMED label '%s' to '%s' (new color '#%s')" 
+                              % (old_label_name, new_label_name, color))
+                    else:
+                        print("RENAMED label '%s' to '%s'" 
+                              % (old_label_name, new_label_name))
+    else:
+        sys.stderr.write("ERROR: unknown command '%s'\n" % command)
+        sys.exit(1)
 
 
 if __name__ == '__main__':
