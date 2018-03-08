@@ -104,7 +104,7 @@ Available COMMANDs
 
   The JSON is a list of sublists:
 
-    [ [ OLD_LABEL_NAME, NEW_LABEL_NAME [, COLOR ] ...]
+    [ [ OLD_LABEL_NAME, NEW_LABEL_NAME, COLOR ] ...]
 
   Each sublist can be used to create a new label, delete an existing
   label, rename a label, change the color of a label, or rename and
