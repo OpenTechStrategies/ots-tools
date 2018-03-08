@@ -75,11 +75,11 @@ Available COMMANDs
 
   Print a list of all labels in the repository, one per line.
 
-* "do-issues"  (input file required)
+* "edit-issues"  (input file required)
 
   Manipulate issues in various ways.  Right now, the only manipulation
   supported is adding/removing existing labels to/from issues.  (See
-  also the "do-labels" command.)
+  also the "edit-labels" command.)
 
   The top level structure of the JSON is a list.  Each element of that
   list is a dictionary.  The only required entry in each dictionary is
@@ -106,7 +106,7 @@ Available COMMANDs
   List elements are processed in order from top to bottom; it's fine,
   though somewhat silly, for the same issue to appear multiple times.
 
-* "do-labels"  (input file required)
+* "edit-labels"  (input file required)
 
   Create, delete, rename, and change colors of labels.
 
@@ -284,7 +284,7 @@ def main():
         labels = repos.get_labels()
         for label in labels:
             print("%s" % label.name)
-    elif command == "do-issues":
+    elif command == "edit-issues":
         elements = get_input(infile)
         for element in elements:
             issue_number = element['issue']
@@ -318,7 +318,7 @@ def main():
                                   issue.title))
             for label in issue.labels:
                 print("                - label \"%s\"" % label.name)
-    elif command == "do-labels":
+    elif command == "edit-labels":
         elements = get_input(infile)
         for sublist in elements:
             old_label_name = None
