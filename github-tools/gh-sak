@@ -63,6 +63,10 @@ Available COMMANDs
   
       another body (i.e., first comment) here
 
+* "list-labels"  (no input file)
+
+  Print a list of all labels in the repository, one per line.
+
 * "do-issues"  (input file required)
 
   Manipulate issues in various ways.  Right now, the only manipulation
@@ -262,6 +266,10 @@ def main():
                 print("%s" 
                       % "\n  ".join(("\n" + issue.body).splitlines())[1:])
                 print("")
+    elif command == "list-labels":
+        labels = repos.get_labels()
+        for label in labels:
+            print("%s" % label.name)
     elif command == "do-issues":
         elements = get_input(infile)
         for element in elements:
