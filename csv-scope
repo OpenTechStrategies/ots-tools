@@ -29,7 +29,7 @@ Available options:
   -s ROW | --start ROW            Start with headers on row ROW.
   -n | --number-rows              Show row numbers.
   -w WIDTH | --wrap=WIDTH         Wrap at WIDTH (recommended: 77).
-  -e ENC | --encoding=ENC         Assume CSV input in encoding ENC
+  -e ENC | --encoding=ENC         Assume CSV input in encoding ENC.
 
 Example values for ENC: "utf-8", "latin1" or "ISO-8859-1", etc.
 """
