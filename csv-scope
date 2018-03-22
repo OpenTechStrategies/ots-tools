@@ -28,8 +28,7 @@ Available options:
   -h | -? | --help | --usage      Show this help.
   -s ROW | --start ROW            Start with headers on row ROW.
   -n | --number-rows              Show row numbers.
-  -b | --break-lines              Break and wrap long lines.
-  -w WIDTH | --width=WIDTH        Width to use with -b (default: 77).
+  -w WIDTH | --wrap=WIDTH         Wrap at WIDTH (recommended: 77).
   -e ENC | --encoding=ENC         Assume CSV input in encoding ENC
 
 Example values for ENC: "utf-8", "latin1" or "ISO-8859-1", etc.
@@ -95,11 +94,10 @@ def main():
     row_number = 1        # Keep track, no matter what value of flag is
 
     try:
-        opts, args = getopt.getopt(sys.argv[1:], 'h?nbw:s:e:', 
+        opts, args = getopt.getopt(sys.argv[1:], 'h?nw:s:e:', 
                                    ["help", "usage", 
                                     "number-rows"
-                                    "break",
-                                    "width=",
+                                    "wrap=",
                                     "start=", 
                                     "encoding="])
     except getopt.GetoptError as err:
@@ -111,12 +109,10 @@ def main():
         if o in ("-h", "-?", "--help", "--usage",):
             print("%s" % __doc__)
             sys.exit(0)
-        elif o in ("-b", "--break",):
-            # Ugly flag value overload, but it'll do.  We can't create
-            # the wrapper itself yet because we don't know the max
-            # header length.
-            wrapper = True
-        elif o in ("-w", "--width",):
+        elif o in ("-w", "--wrap",):
+            # TODO: We could have a special value that means "try to
+            # discover the console width", using code something like
+            # rows, cols = os.popen('stty size', 'r').read().split()
             wrap_width = int(a)
         elif o in ("-e", "--encoding",):
             encoding = a
@@ -137,12 +133,6 @@ def main():
         sys.exit(1)
     else:
         sys.stderr.write("ERROR: too many CSV input files specified\n")
-        sys.stderr.write("\n")
-        sys.stderr.write("%s" % __doc__)
-        sys.exit(1)
-
-    if (wrap_width is not None) and (wrapper is None):
-        sys.stderr.write("ERROR: cannot use -w without -b\n")
         sys.stderr.write("\n")
         sys.stderr.write("%s" % __doc__)
         sys.exit(1)
@@ -184,11 +174,7 @@ def main():
         seen_headers[header] = True
     print("")
     print("Rows:")
-    if wrapper is True:
-        if wrap_width is None:
-            # TODO: We could try to discover the console width here, e.g.:
-            # ign_rows, cols = os.popen('stty size', 'r').read().split()
-            wrap_width = 77
+    if wrap_width is not None:
         wrapper = textwrap.TextWrapper(
             width=wrap_width,
             # I think there might be a bug in textwrapper.  It makes
