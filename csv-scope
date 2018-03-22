@@ -186,6 +186,8 @@ def main():
     print("Rows:")
     if wrapper is True:
         if wrap_width is None:
+            # TODO: We could try to discover the console width here, e.g.:
+            # ign_rows, cols = os.popen('stty size', 'r').read().split()
             wrap_width = 77
         wrapper = textwrap.TextWrapper(
             width=wrap_width,
