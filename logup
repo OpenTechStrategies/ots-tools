@@ -1,0 +1,88 @@
+#!/bin/sh
+
+# Copyright (c) 2016 Karl Fogel
+# 
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+# 
+# If you did not receive a copy of the GNU General Public License
+# along with this program, see <http://www.gnu.org/licenses/>.
+
+# Create a file containing the output of the latest version control log.
+# For SVN, use 'svn log -v'; for Git, use 'git log --name-status'.
+#
+# If no file name is given as the argument, then use "logv.out" in the
+# current directory.
+#
+# Because 'svn log' is usually slower than 'git log' (because SVN has
+# to contact a remote server), in the SVN case, look to see if the
+# output of a previous run is already present, and if so, prepend just
+# enough to it to bring the log up to date.
+
+DEST_LOG="${1-logv.out}"
+TMP_FILE=logup-$$.tmp
+
+# Initialize VC_TYPE in the cheapest possible way.
+#
+# Note: this one-liner comes from the 'st' script, so now it's
+# duplicated here.  In the interest of all the scripts in
+# https://svn.red-bean.com/repos/kfogel/trunk/bin/ remaining useable
+# as standalone downloads, I'm not abstracting this out to a library,
+# but might reconsider that if it gets used in a third script. 
+VC_TYPE="unset"
+if svn info > /dev/null 2>&1; then VC_TYPE="svn"; else VC_TYPE="git"; fi
+
+if [ ${VC_TYPE} = "git" ]; then
+   git log --name-status > ${TMP_FILE}
+   mv ${TMP_FILE} ${DEST_LOG}
+   exit 0
+fi
+
+# Else handle SVN case, which is complicated enough that it's the bulk
+# of the script and therefore I didn't want to put it in an 'else'.
+
+TMP_ERR_FILE=logup-err-$$.tmp
+REV=0
+NEXT_REV=1
+
+if [ -f ${DEST_LOG} ]; then
+  REV=`grep -m 1 -E "^r[0-9]+ \\|" ${DEST_LOG} | cut -d " " -f 1 | cut -c 2-`
+  NEXT_REV=`dc -e "${REV} 1 + p"`
+fi
+
+# Gracefully handle the case where it's already at the latest revision.
+if ! svn log -v -rHEAD:${NEXT_REV} 2>${TMP_ERR_FILE} > ${TMP_FILE}; then
+  if grep -q "E160006: No such revision ${NEXT_REV}" ${TMP_ERR_FILE}; then
+    rm -f ${TMP_FILE} ${TMP_ERR_FILE}
+    exit 0
+  else
+    cat ${TMP_ERR_FILE} >&2
+    rm -f ${TMP_FILE} ${TMP_ERR_FILE}
+    exit 1
+  fi
+fi
+rm -f ${TMP_ERR_FILE}
+
+# Remove the final separator line from the new file, so we don't get
+# two lines like this...
+#
+# ------------------------------------------------------------------------
+# ------------------------------------------------------------------------
+#
+# ... in the result after we append the existing file.  (We could just
+# as easily remove the first line from the old file, of course.)
+head -n -1 ${TMP_FILE} > ${TMP_FILE}.tmp
+mv ${TMP_FILE}.tmp ${TMP_FILE}
+
+if [ -f ${DEST_LOG} ]; then
+  cat ${DEST_LOG} >> ${TMP_FILE}
+fi
+
+mv ${TMP_FILE} ${DEST_LOG}

@@ -1,0 +1,32 @@
+#!/bin/sh
+
+# Show the commit-log difference between two branches.
+# Only supports git right now, but could support svn too.
+
+# I'm not sure this is long enough to copyright.  Use as you will.
+
+BRANCH_1="${1}"
+BRANCH_2="${2}"
+
+if [ "${BRANCH_1}" = "" ]; then
+  echo "ERROR: At least one branch name is required."
+  exit 1
+fi
+
+if [ "${BRANCH_2}" = "" ]; then
+  BRANCH_2="${BRANCH_1}"
+  BRANCH_1="master"
+fi
+
+TMP_FILE_1=/tmp/log-diff-$$-b1.out
+TMP_FILE_2=/tmp/log-diff-$$-b2.out
+
+git log --name-status ${BRANCH_1} > ${TMP_FILE_1}
+git log --name-status ${BRANCH_2} > ${TMP_FILE_2}
+
+echo ""
+echo "Log difference between '${BRANCH_1}' and '${BRANCH_2}':"
+echo ""
+diff -u ${TMP_FILE_1} ${TMP_FILE_2}
+
+rm ${TMP_FILE_1} ${TMP_FILE_2}

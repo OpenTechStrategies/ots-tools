@@ -1,0 +1,84 @@
+#!/bin/sh
+
+# Grep case-insensitively for a pattern in remote Mailman 2.x archives
+# (because Mailman's Pipermail archiver doesn't offer search).
+# Run without arguments to see usage.
+
+# Copyright (c) 2017 Karl Fogel
+# 
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+# 
+# If you did not receive a copy of the GNU General Public License
+# along with this program, see <http://www.gnu.org/licenses/>.
+
+# The "%/" below removes the trailing slash if there is any.  This is
+# the "suffix removal parameter expansion construct" that all
+# POSIX-style shells have.  See
+# https://www.gnu.org/software/bash/manual/bash.html#Shell-Parameter-Expansion
+ARCHIVE_ROOT_URL="${1%/}"
+
+PATTERN="${2}"
+
+# Check that we got all the expected arguments.
+if [ -z "${ARCHIVE_ROOT_URL}" -o -z "${PATTERN}" ]; then
+  echo "Usage: `basename ${0}` ARCHIVE_ROOT_URL PATTERN"
+  echo ''
+  echo 'E.g.:'
+  echo ''
+  echo '  $ search-mailman-archives                                 \\'
+  echo '    https://lists.opensource.org/pipermail/license-review/  \\'
+  echo '    "shortest copyleft licence"'
+  exit 1
+fi
+
+TMP_DIR="search-mailman-archives-tmp-$$"
+TMP_PAGE="archive-page-tmp-$$"
+
+rm -rf ${TMP_DIR}
+mkdir ${TMP_DIR}
+cd ${TMP_DIR}
+
+# First fetch the main archive listing page.
+curl -L -o ${TMP_PAGE} ${ARCHIVE_ROOT_URL}
+
+# Then parse it to get links to all the gzipped archive files for
+# individual months.
+
+# I think the regexp below will support quarterly and other
+# non-monthly archiving periods, but I've only tested it with
+# monthly (which is Mailman's default and is the most common).
+for gzipped_month in                                                          \
+  `grep -i -E 'href="[0-9][0-9][0-9][0-9]-[a-z0-9]+.txt.gz">\[' "${TMP_PAGE}" \
+    | awk -F'"' '{print $2}'`; do
+  curl -s -L -o ${gzipped_month} "${ARCHIVE_ROOT_URL}/${gzipped_month}"
+  echo "Fetched ${gzipped_month}..."
+  gunzip ${gzipped_month}
+done
+echo ""
+
+rm ${TMP_PAGE}
+
+echo "Searching:"
+echo ""
+grep -i "${PATTERN}" *
+echo ""
+echo "Done."
+echo ""
+
+cd ..
+
+echo "You can clean up by running this command:"
+echo ""
+echo "   rm -rf '${TMP_DIR}'"
+echo ""
+echo "Or you can 'cd ${TMP_DIR}' to do more grepping "
+echo "in the archives there."
+echo ""

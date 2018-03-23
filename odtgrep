@@ -1,0 +1,6 @@
+#!/bin/sh
+
+STR="${1}"
+FILE="${2}"
+
+unzip -p "${FILE}" content.xml | tidy -q -xml 2> /dev/null | grep "${STR}"

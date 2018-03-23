@@ -1,0 +1,65 @@
+#!/bin/sh
+
+# Copyright (c) 2016 Karl Fogel
+# 
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+# 
+# If you did not receive a copy of the GNU General Public License
+# along with this program, see <http://www.gnu.org/licenses/>.
+
+usage()
+{
+   echo "Usage: ${0} REMOTE_SVN_REPOS_URL LOCAL_SVN_REPOS_PATH"
+   echo ""
+   echo "Make a full local copy of a remote SVN repository, using 'svnsync'."
+   echo ""
+   echo "The remote repository should be given as a URL "
+   echo "(e.g., http://, https://, or svn://)."
+   echo ""
+   echo "The local repository should be given as a simple path"
+   echo "(i.e., do not use the file:// syntax)."
+   exit 1
+}
+
+if [ "${1}X" = "X" ]; then
+  usage
+  exit 1
+else
+  REMOTE_REPOS_URL="${1}"
+fi
+
+if [ "${2}X" = "X" ]; then
+  usage
+  exit 1
+else
+  LOCAL_REPOS_PATH="${2}"
+fi
+
+if [ -e ${LOCAL_REPOS_PATH} ]; then
+  echo "ERROR: path already exists: '${LOCAL_REPOS_PATH}'"
+  echo "Please delete it or move it out of the way, then try again."
+  exit 1
+fi
+
+svnadmin create ${LOCAL_REPOS_PATH}
+
+echo '#!/bin/sh'  > ${LOCAL_REPOS_PATH}/hooks/pre-revprop-change
+echo ''          >> ${LOCAL_REPOS_PATH}/hooks/pre-revprop-change
+echo 'exit 0'    >> ${LOCAL_REPOS_PATH}/hooks/pre-revprop-change
+chmod a+x ${LOCAL_REPOS_PATH}/hooks/pre-revprop-change
+
+LOCAL_REPOS_ABS_PATH=`(cd ${LOCAL_REPOS_PATH}; pwd)`
+LOCAL_REPOS_URL="file://${LOCAL_REPOS_ABS_PATH}"
+
+echo "Local repos URL: ${LOCAL_REPOS_URL}"
+
+svnsync init ${LOCAL_REPOS_URL} ${REMOTE_REPOS_URL}
+svnsync --non-interactive sync ${LOCAL_REPOS_URL}

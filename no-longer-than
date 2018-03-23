@@ -1,0 +1,33 @@
+#!/usr/bin/env python3
+
+"""Read lines from stdin & print them stdout, chopping them if too long.
+
+By default, "too long" is > 256 characters, but if you pass an
+argument it will be used as the chop limit instead.
+
+Use this when you're generating output that might have some very long
+lines (e.g., thousands of characters long, say from minified
+Javascript files) and you don't want those huge lines to take over
+your terminal window, or your Emacs shell buffer, or wherever you're
+sending your output.  Example usages:
+
+  $ grep -r "foo" . | no-longer-than
+  $ git diff | no-longer-than
+
+"""
+
+# Too tiny to copyright under an open source license.  Use as you please.
+
+import sys
+
+limit = 256
+
+if len(sys.argv) > 1:
+    limit = int(sys.argv[1])
+
+line = sys.stdin.readline()
+while line != "":
+    sys.stdout.write(line[0:limit])
+    if len(line) > limit and line[-1] == "\n":
+        sys.stdout.write('\n')
+    line = sys.stdin.readline()
