@@ -39,8 +39,8 @@ import csv
 import getopt, sys
 import textwrap
 
-class Thing():
-    """Class representing one thing."""
+class Row():
+    """Class representing one row."""
     def __init__(self, headers, row):
         self.fields = {}
         for header, value in zip(headers, row):
@@ -87,7 +87,7 @@ def main():
     csv_file = None
     csv_reader = None
     encoding = 'utf-8'
-    things = []
+    rows = []
     wrapper = None
     wrap_width = None
     header_start_row = 1
@@ -190,13 +190,13 @@ def main():
             break_long_words=False,
             break_on_hyphens=False)
     for row in csv_reader:
-        thing = Thing(headers, row)
+        row = Row(headers, row)
         sep = "=" * max_header_length
         if number_rows:
             num_str = "===== Row %d: " % row_number
             sep = num_str + "=" * max(5, (max_header_length - len(num_str)))
         print("%s" % sep)
-        print("%s" % thing.aligned_str(max_header_length, wrapper))
+        print("%s" % row.aligned_str(max_header_length, wrapper))
         row_number += 1
 
 
