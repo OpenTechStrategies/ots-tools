@@ -28,12 +28,13 @@ Available options:
   -h | -? | --help | --usage      Show this help.
   -s ROW | --start ROW            Start with headers on row ROW.
   -n | --number-rows              Show row numbers.
-  -w WIDTH | --wrap=WIDTH         Wrap at WIDTH (recommended: 77).
+  -w WIDTH | --wrap=WIDTH         Wrap at WIDTH (use "-" to auto-detect).
   -e ENC | --encoding=ENC         Assume CSV input in encoding ENC.
 
 Example values for ENC: "utf-8", "latin1" or "ISO-8859-1", etc.
 """
 
+import os
 import csv
 import getopt, sys
 import textwrap
@@ -110,10 +111,11 @@ def main():
             print("%s" % __doc__)
             sys.exit(0)
         elif o in ("-w", "--wrap",):
-            # TODO: We could have a special value that means "try to
-            # discover the console width", using code something like
-            # rows, cols = os.popen('stty size', 'r').read().split()
-            wrap_width = int(a)
+            if a == "-":
+                ign_rows, cols = os.popen('stty size', 'r').read().split()
+                wrap_width = max(12, int(cols) - 3)
+            else:
+                wrap_width = int(a)
         elif o in ("-e", "--encoding",):
             encoding = a
         elif o in ("-s", "--start",):
