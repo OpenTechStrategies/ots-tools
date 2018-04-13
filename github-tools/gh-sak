@@ -24,7 +24,7 @@
 __doc__ = """\
 Manipulate issues associated with a GitHub repository.  Usage:
 
-  $ ./gh-sak --repository OWNER/REPOS COMMAND [ --infile INPUT_FILE ]
+  $ ./gh-sak --repository OWNER/REPOS [ --infile INPUT_FILE ] COMMAND
 
 OWNER/REPOS is something like "opentechstrategies/ots-tools".
 
@@ -176,14 +176,14 @@ def main():
     try:
         (opts, args) = getopt.getopt(
             sys.argv[1:], "h?", 
-            ["help", "repository=", "infile=",])
+            ["help", "usage", "repository=", "infile=",])
     except getopt.GetoptError as err:
         sys.stderr.write(str(err))
         sys.stderr.write("\n")
         sys.exit(1)
 
     for opt, optarg in opts:
-        if opt in ("h", "--help",):
+        if opt in ("-h", "-?", "--help", "--usage",):
             print(__doc__)
             sys.exit(0)
         elif opt in ("--repository",):
