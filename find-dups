@@ -107,67 +107,67 @@ import time
 
 
 class PathInfo:
-  """Information about one path."""
-  def __init__(self, inode, mtime, size, quicksum):
-    self.inode = inode
-    self.mtime = mtime
-    # Although file size is used as a first filter in determining
-    # duplicativeness, that takes place outside this class, and the
-    # self.size member here is not used for that.  However, if this
-    # file turns out to be one of the identical files in a bucket of
-    # duplicates, one of the bucket members will be randomly chosen to
-    # supply the size for display, and this could be the one.
-    self.size_for_display = size
-    self.quicksum = quicksum
-  def __str__(self):
-    ret = ""
-    ret += "  mtime: %s\n" % time.ctime(self.mtime)
-    ret += "  inode: %d\n" % self.inode
-    ret += "  size:  %d\n" % self.size_for_display
-    ret += "  qsum:  %s\n" % self.quicksum
-    return ret
+    """Information about one path."""
+    def __init__(self, inode, mtime, size, quicksum):
+        self.inode = inode
+        self.mtime = mtime
+        # Although file size is used as a first filter in determining
+        # duplicativeness, that takes place outside this class, and the
+        # self.size member here is not used for that.  However, if this
+        # file turns out to be one of the identical files in a bucket of
+        # duplicates, one of the bucket members will be randomly chosen to
+        # supply the size for display, and this could be the one.
+        self.size_for_display = size
+        self.quicksum = quicksum
+    def __str__(self):
+        ret = ""
+        ret += "  mtime: %s\n" % time.ctime(self.mtime)
+        ret += "  inode: %d\n" % self.inode
+        ret += "  size:  %d\n" % self.size_for_display
+        ret += "  qsum:  %s\n" % self.quicksum
+        return ret
 
 
 def md5_file(path, quicksum=False):
-  """Return the MD5 digest of file PATH as a hexadecimal string.
+    """Return the MD5 digest of file PATH as a hexadecimal string.
 If QUICKSUM is True, then return the md5sum for no more than the first
 4096 bytes (for large files, this is faster than doing the entire
 file, and a probabilistic fingerprint is useful for some purposes).
 QUICKSUM is False by default.
 
 If there is an IOError opening PATH, return the all-zeros hex digest."""
-  md5er = hashlib.md5()
-  try:
-    with open(path) as f:
-      if quicksum:
-        md5er.update(f.read(4096))
-      else:
-        for chunk in iter(lambda: f.read(1048576), ''):
-          md5er.update(chunk)
-    return md5er.hexdigest()
-  except IOError, err:
-    # The reason to trap this exception is that sometimes a path that
-    # existed during an earlier crawl no longer exists when we go back
-    # to get its short or long md5sum.  Rather than stop at that point,
-    # the most useful behavior is to just give a special, recognizable
-    # hex digest for such files.
-    # 
-    #   Traceback (most recent call last):
-    #     File "/home/kfogel/bin/find-dups", line 378, in <module>
-    #       main()
-    #     File "/home/kfogel/bin/find-dups", line 347, in main
-    #       duplicates = gather_dups(roots, ignored_directories, ignore_empty)
-    #     File "/home/kfogel/bin/find-dups", line 212, in gather_dups
-    #       md5_file(this_file_path, quicksum=True))
-    #     File "/home/kfogel/bin/find-dups", line 138, in md5_file
-    #       with open(path) as f:
-    #   IOError: [Errno 6] No such device or address: \
-    #     './.forever/sock/worker.1435765019424GgN.sock'
-    return "0" * 32
+    md5er = hashlib.md5()
+    try:
+        with open(path) as f:
+            if quicksum:
+                md5er.update(f.read(4096))
+            else:
+                for chunk in iter(lambda: f.read(1048576), ''):
+                    md5er.update(chunk)
+        return md5er.hexdigest()
+    except IOError, err:
+        # The reason to trap this exception is that sometimes a path that
+        # existed during an earlier crawl no longer exists when we go back
+        # to get its short or long md5sum.  Rather than stop at that point,
+        # the most useful behavior is to just give a special, recognizable
+        # hex digest for such files.
+        # 
+        #   Traceback (most recent call last):
+        #     File "/home/kfogel/bin/find-dups", line 378, in <module>
+        #       main()
+        #     File "/home/kfogel/bin/find-dups", line 347, in main
+        #       duplicates = gather_dups(roots, ignored_directories, ignore_empty)
+        #     File "/home/kfogel/bin/find-dups", line 212, in gather_dups
+        #       md5_file(this_file_path, quicksum=True))
+        #     File "/home/kfogel/bin/find-dups", line 138, in md5_file
+        #       with open(path) as f:
+        #   IOError: [Errno 6] No such device or address: \
+        #     './.forever/sock/worker.1435765019424GgN.sock'
+        return "0" * 32
 
 
 def gather_dups(roots, ignored_directories=[], ignore_empty=False):
-  """Walk the trees in ROOTS; return info about duplicates.
+    """Walk the trees in ROOTS; return info about duplicates.
 The return value is a dictionary mapping hex digests (strings)
 to sub-dictionaries, where each sub-dict maps paths (strings)
 to PathInfo objects.
@@ -177,223 +177,223 @@ directories not to descend into.
 
 If IGNORE_EMPTY is True, then ignore empty files, that is, do not
 count them as duplicates."""
-  # Maps sizes-in-bytes (numbers) to sub-dictionaries, where each
-  # sub-dict maps paths (strings) to PathInfo objects or to None.
-  #
-  # When None, that means we have only seen one instance of a file of
-  # this size so far, so there has as yet been no reason to calculate
-  # its checksum, discover its modtime, etc.  Once we see the second
-  # file with that size, there is now the possibility of duplication, so
-  # from that moment on, we will have to fill out PathInfo instances for
-  # both the original file of that size and all subsequent files we
-  # encounter of the same size.
-  paths_by_size = { }
+    # Maps sizes-in-bytes (numbers) to sub-dictionaries, where each
+    # sub-dict maps paths (strings) to PathInfo objects or to None.
+    #
+    # When None, that means we have only seen one instance of a file of
+    # this size so far, so there has as yet been no reason to calculate
+    # its checksum, discover its modtime, etc.  Once we see the second
+    # file with that size, there is now the possibility of duplication, so
+    # from that moment on, we will have to fill out PathInfo instances for
+    # both the original file of that size and all subsequent files we
+    # encounter of the same size.
+    paths_by_size = { }
 
-  for root in roots:
-    for this_dir, dirnames, filenames in os.walk(root):
-      dirnames[:] = [d for d in dirnames if d not in ignored_directories]
-      for f in filenames:
-        this_file_path = os.path.join(this_dir, f)
-        if os.path.islink(this_file_path):
-          continue # symlinks are not interesting to us; skip them
-        this_file_stat = os.stat(this_file_path)
-        if ignore_empty and this_file_stat.st_size == 0:
-          continue
-        size_bucket = paths_by_size.get(this_file_stat.st_size, { })
-        if size_bucket: 
-          # We've already found at least one other path with this size.
+    for root in roots:
+        for this_dir, dirnames, filenames in os.walk(root):
+            dirnames[:] = [d for d in dirnames if d not in ignored_directories]
+            for f in filenames:
+                this_file_path = os.path.join(this_dir, f)
+                if os.path.islink(this_file_path):
+                    continue # symlinks are not interesting to us; skip them
+                this_file_stat = os.stat(this_file_path)
+                if ignore_empty and this_file_stat.st_size == 0:
+                    continue
+                size_bucket = paths_by_size.get(this_file_stat.st_size, { })
+                if size_bucket: 
+                    # We've already found at least one other path with this size.
 
-          # A truly optimal implementation would check for inode
-          # identity too, because if two paths are really hard links
-          # to the same underlying file then obviously they will have
-          # the same content.  Making this optimization would probably
-          # involve another level of hashing somewhere around here.
-          # This circumstance is rare enough that I'm not sure it's
-          # worth the extra complexity, but counter-evidence welcome.
+                    # A truly optimal implementation would check for inode
+                    # identity too, because if two paths are really hard links
+                    # to the same underlying file then obviously they will have
+                    # the same content.  Making this optimization would probably
+                    # involve another level of hashing somewhere around here.
+                    # This circumstance is rare enough that I'm not sure it's
+                    # worth the extra complexity, but counter-evidence welcome.
 
-          # Technically, a loop should be unnecessary here, since
-          # there should be at most one existing path key with a None
-          # value.  A loop with a conditional inside it is just a
-          # cheap way to take care of that first case.  However, it
-          # might be good to put a sanity-check assertion anyway.
-          for existing_path in size_bucket.keys():
-            existing_pathinfo = size_bucket[existing_path]
-            if existing_pathinfo is None:
-              existing_path_stat = os.stat(existing_path)
-              size_bucket[existing_path] = PathInfo(
-                existing_path_stat.st_ino,
-                existing_path_stat.st_mtime,
-                existing_path_stat.st_size,
-                md5_file(existing_path, quicksum=True))
-          # Now that we've backfilled the info for the file of this
-          # size already seen, fill in the info for the new file too.
-          size_bucket[this_file_path] = PathInfo(
-            this_file_stat.st_ino,
-            this_file_stat.st_mtime,
-            this_file_stat.st_size,
-            md5_file(this_file_path, quicksum=True))
-        else:
-          # This is the first path found with this size.  Therefore we
-          # record this path, but there is as yet no need to create a
-          # PathInfo object for it.
-          size_bucket[this_file_path] = None
-          paths_by_size[this_file_stat.st_size] = size_bucket
+                    # Technically, a loop should be unnecessary here, since
+                    # there should be at most one existing path key with a None
+                    # value.  A loop with a conditional inside it is just a
+                    # cheap way to take care of that first case.  However, it
+                    # might be good to put a sanity-check assertion anyway.
+                    for existing_path in size_bucket.keys():
+                        existing_pathinfo = size_bucket[existing_path]
+                        if existing_pathinfo is None:
+                            existing_path_stat = os.stat(existing_path)
+                            size_bucket[existing_path] = PathInfo(
+                                existing_path_stat.st_ino,
+                                existing_path_stat.st_mtime,
+                                existing_path_stat.st_size,
+                                md5_file(existing_path, quicksum=True))
+                    # Now that we've backfilled the info for the file of this
+                    # size already seen, fill in the info for the new file too.
+                    size_bucket[this_file_path] = PathInfo(
+                        this_file_stat.st_ino,
+                        this_file_stat.st_mtime,
+                        this_file_stat.st_size,
+                        md5_file(this_file_path, quicksum=True))
+                else:
+                    # This is the first path found with this size.  Therefore we
+                    # record this path, but there is as yet no need to create a
+                    # PathInfo object for it.
+                    size_bucket[this_file_path] = None
+                    paths_by_size[this_file_stat.st_size] = size_bucket
 
-  # Maps quicksum hex digests (strings) to sub-dictionaries, where
-  # each sub-dict maps paths (strings) to PathInfo objects.
-  paths_by_quicksum = { }
+    # Maps quicksum hex digests (strings) to sub-dictionaries, where
+    # each sub-dict maps paths (strings) to PathInfo objects.
+    paths_by_quicksum = { }
 
-  # Now go through paths_by_size, looking for duplicates in the
-  # quicksum.  That doesn't mean the files are actually duplicates, of
-  # course, but it narrows things down so that we can perform the
-  # highest-cost test, a full checksum, only in the cases that truly
-  # need it.
-  for size in paths_by_size.keys():
-    for path in paths_by_size[size].keys():
-      this_path_info = paths_by_size[size][path]
-      if this_path_info is not None:
-        # This is the sub-dict value stored in paths_by_quicksum.
-        quicksum_bucket = paths_by_quicksum.get(this_path_info.quicksum, {})
-        quicksum_bucket[path] = this_path_info
-        # Unconditionally update.  Since we're updating whatever
-        # quicksum group object we found, overwriting the "old" one
-        # with the "new" one is a no-op after the first time, but
-        # there's no point checking -- just do it unconditionally.
-        paths_by_quicksum[this_path_info.quicksum] = quicksum_bucket
-  # Eliminate every quicksum group that has only one member.
-  # The ones that remain represent quicksum duplicates.
-  for quicksum in paths_by_quicksum.keys():
-    quicksum_bucket = paths_by_quicksum[quicksum]
-    if len(quicksum_bucket.keys()) == 1:
-      del paths_by_quicksum[quicksum]
+    # Now go through paths_by_size, looking for duplicates in the
+    # quicksum.  That doesn't mean the files are actually duplicates, of
+    # course, but it narrows things down so that we can perform the
+    # highest-cost test, a full checksum, only in the cases that truly
+    # need it.
+    for size in paths_by_size.keys():
+        for path in paths_by_size[size].keys():
+            this_path_info = paths_by_size[size][path]
+            if this_path_info is not None:
+                # This is the sub-dict value stored in paths_by_quicksum.
+                quicksum_bucket = paths_by_quicksum.get(this_path_info.quicksum, {})
+                quicksum_bucket[path] = this_path_info
+                # Unconditionally update.  Since we're updating whatever
+                # quicksum group object we found, overwriting the "old" one
+                # with the "new" one is a no-op after the first time, but
+                # there's no point checking -- just do it unconditionally.
+                paths_by_quicksum[this_path_info.quicksum] = quicksum_bucket
+    # Eliminate every quicksum group that has only one member.
+    # The ones that remain represent quicksum duplicates.
+    for quicksum in paths_by_quicksum.keys():
+        quicksum_bucket = paths_by_quicksum[quicksum]
+        if len(quicksum_bucket.keys()) == 1:
+            del paths_by_quicksum[quicksum]
 
-  # The remaining files are duplicates according to quicksum.
-  # Now do the long test to make sure.
-  paths_by_fullsum = { }
-  for quicksum in paths_by_quicksum.keys():
-    quicksum_bucket = paths_by_quicksum[quicksum]
-    for path in quicksum_bucket.keys():
-      this_path_info = quicksum_bucket[path]
-      fullsum = md5_file(path)
-      fullsum_bucket = paths_by_fullsum.get(fullsum, { })
-      fullsum_bucket[path] = this_path_info
-      paths_by_fullsum[fullsum] = fullsum_bucket
+    # The remaining files are duplicates according to quicksum.
+    # Now do the long test to make sure.
+    paths_by_fullsum = { }
+    for quicksum in paths_by_quicksum.keys():
+        quicksum_bucket = paths_by_quicksum[quicksum]
+        for path in quicksum_bucket.keys():
+            this_path_info = quicksum_bucket[path]
+            fullsum = md5_file(path)
+            fullsum_bucket = paths_by_fullsum.get(fullsum, { })
+            fullsum_bucket[path] = this_path_info
+            paths_by_fullsum[fullsum] = fullsum_bucket
 
-  # Eliminate every fullsum group that has only one member.  Since the
-  # buckets are organized by full checksum this time, any buckets that
-  # remain afterwards represent true duplicates.
-  for fullsum in paths_by_fullsum.keys():
-    fullsum_bucket = paths_by_fullsum[fullsum]
-    if len(fullsum_bucket.keys()) == 1:
-      del paths_by_fullsum[fullsum]
+    # Eliminate every fullsum group that has only one member.  Since the
+    # buckets are organized by full checksum this time, any buckets that
+    # remain afterwards represent true duplicates.
+    for fullsum in paths_by_fullsum.keys():
+        fullsum_bucket = paths_by_fullsum[fullsum]
+        if len(fullsum_bucket.keys()) == 1:
+            del paths_by_fullsum[fullsum]
 
-  return paths_by_fullsum
+    return paths_by_fullsum
 
 
 def common_path_prefix(lst):
-  """Return the path-wise common prefix of all the paths in LST.
-  LST is a list of strings, each a relative or absolute filesystem path.
-  Parts of the comparison are done only textually, so if some paths are
-  absolute and some are relative, this may miss some filesystem-wise
-  common prefixes.
+    """Return the path-wise common prefix of all the paths in LST.
+    LST is a list of strings, each a relative or absolute filesystem path.
+    Parts of the comparison are done only textually, so if some paths are
+    absolute and some are relative, this may miss some filesystem-wise
+    common prefixes.
 
-  If the result would be "./", then just fold it to the empty string,
-  since it's just a call artifact.  It might be cleaner to handle that
-  in the caller, but let's just drop the pretense that this is a general
-  purpose function, shall we?  We all know what this script does."""
-  prefix = os.path.commonprefix(lst)
-  if prefix == './':
-    return ''
-  if prefix == '' or prefix[-1] == os.sep:
-    return prefix
-  else:
-    if os.path.isdir(prefix):
-      return prefix
-    else:
-      idx = prefix.rfind(os.sep)
-      if idx == -1 or prefix[:(idx + 1)] == './':
+    If the result would be "./", then just fold it to the empty string,
+    since it's just a call artifact.  It might be cleaner to handle that
+    in the caller, but let's just drop the pretense that this is a general
+    purpose function, shall we?  We all know what this script does."""
+    prefix = os.path.commonprefix(lst)
+    if prefix == './':
         return ''
-      else:
-        return prefix[:(idx + 1)]
+    if prefix == '' or prefix[-1] == os.sep:
+        return prefix
+    else:
+        if os.path.isdir(prefix):
+            return prefix
+        else:
+            idx = prefix.rfind(os.sep)
+            if idx == -1 or prefix[:(idx + 1)] == './':
+                return ''
+            else:
+                return prefix[:(idx + 1)]
 
 
 def paths_are_contained(paths, containers):
-  """If all PATHS are under one of CONTAINERS, return that container.
+    """If all PATHS are under one of CONTAINERS, return that container.
 PATHS is a list of paths (presumably duplicate files), and CONTAINERS
 is a list of directory basenames.  If every path in PATHS is contained
 in a subtree under a directory named any of the names in CONTAINERS, 
 return that name, else return False."""
-  prefix = os.path.abspath(common_path_prefix(paths))
-  for container in containers:
-    abs_container = os.path.abspath(container)
-    if common_path_prefix((prefix, abs_container,)) == abs_container:
-      return container
-  return False
+    prefix = os.path.abspath(common_path_prefix(paths))
+    for container in containers:
+        abs_container = os.path.abspath(container)
+        if common_path_prefix((prefix, abs_container,)) == abs_container:
+            return container
+    return False
 
 
 def main():
-  roots = None
-  ignore_empty = False
-  ignored_directories = []
-  ignored_if_containing = []
+    roots = None
+    ignore_empty = False
+    ignored_directories = []
+    ignored_if_containing = []
 
-  try:
-    (opts, args) = getopt.getopt(sys.argv[1:], "h?",
-                                 [ "ignore-empty",
-                                   "ignore-dir=",
-                                   "ignore-contained=",
-                                   "help", 
-                                   "usage"
-                                 ])
-  except getopt.GetoptError, err:
-    sys.stderr.write(str(err))
-    sys.stderr.write("\n")
-    sys.exit(1)
+    try:
+        (opts, args) = getopt.getopt(sys.argv[1:], "h?",
+                                     [ "ignore-empty",
+                                       "ignore-dir=",
+                                       "ignore-contained=",
+                                       "help", 
+                                       "usage"
+                                     ])
+    except getopt.GetoptError, err:
+        sys.stderr.write(str(err))
+        sys.stderr.write("\n")
+        sys.exit(1)
 
-  for opt, optarg in opts:
-    if opt in ("-h", "-?", "--help", "--usage"):
-      print __doc__;
-      sys.exit(0)
-    elif opt in ("--ignore-empty"):
-      ignore_empty = True
-    elif opt in ("--ignore-dir"):
-      ignored_directories.append(optarg)
-    elif opt in ("--ignore-contained"):
-      ignored_if_containing.append(optarg)
+    for opt, optarg in opts:
+        if opt in ("-h", "-?", "--help", "--usage"):
+            print __doc__;
+            sys.exit(0)
+        elif opt in ("--ignore-empty"):
+            ignore_empty = True
+        elif opt in ("--ignore-dir"):
+            ignored_directories.append(optarg)
+        elif opt in ("--ignore-contained"):
+            ignored_if_containing.append(optarg)
 
-  if len(args) < 1:
-    roots = (".",)
-  else:
-    roots = args
+    if len(args) < 1:
+        roots = (".",)
+    else:
+        roots = args
 
-  duplicates = gather_dups(roots, ignored_directories, ignore_empty)
+    duplicates = gather_dups(roots, ignored_directories, ignore_empty)
 
-  # Display each bucket, sorted by modtime within a given bucket.
-  for checksum in duplicates.keys():
-    paths = duplicates[checksum].keys()
-    size = None
-    mtime_sorted_paths = [ ]
+    # Display each bucket, sorted by modtime within a given bucket.
+    for checksum in duplicates.keys():
+        paths = duplicates[checksum].keys()
+        size = None
+        mtime_sorted_paths = [ ]
 
-    # If ignored_if_containing is empty this is a no-op of course.
-    if paths_are_contained(paths, ignored_if_containing):
-      continue
+        # If ignored_if_containing is empty this is a no-op of course.
+        if paths_are_contained(paths, ignored_if_containing):
+            continue
 
-    for path in paths:
-      if size is None:
-        size = duplicates[checksum][path].size_for_display
-      mtime_sorted_paths.append((path, duplicates[checksum][path]))
-    mtime_sorted_paths = sorted(mtime_sorted_paths, 
-                                key=lambda tup: tup[1].mtime)
-    print "%s (%d identical files, each %d bytes):" \
-      % (checksum, len(mtime_sorted_paths), size)
-    common_prefix = common_path_prefix([x[0] for x in mtime_sorted_paths])
-    if common_prefix:
-      print "(common parent: %s)" % common_prefix
-    for tup in mtime_sorted_paths:
-      pretty_time = time.strftime("%Y/%m/%d %H:%M:%S", 
-                                  time.localtime(tup[1].mtime))
-      print "  %s (inode %s): %s" % (pretty_time, tup[1].inode, tup[0])
-    print ""
+        for path in paths:
+            if size is None:
+                size = duplicates[checksum][path].size_for_display
+            mtime_sorted_paths.append((path, duplicates[checksum][path]))
+        mtime_sorted_paths = sorted(mtime_sorted_paths, 
+                                    key=lambda tup: tup[1].mtime)
+        print "%s (%d identical files, each %d bytes):" \
+            % (checksum, len(mtime_sorted_paths), size)
+        common_prefix = common_path_prefix([x[0] for x in mtime_sorted_paths])
+        if common_prefix:
+            print "(common parent: %s)" % common_prefix
+        for tup in mtime_sorted_paths:
+            pretty_time = time.strftime("%Y/%m/%d %H:%M:%S", 
+                                        time.localtime(tup[1].mtime))
+            print "  %s (inode %s): %s" % (pretty_time, tup[1].inode, tup[0])
+        print ""
 
 
 if __name__ == '__main__':
