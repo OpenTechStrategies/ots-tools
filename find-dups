@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2015, 2016 Karl Fogel
+# Copyright (c) 2015, 2016, 2018 Karl Fogel
 # 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,16 +21,29 @@
 Duplicate files are files that have exactly the same content, even
 though their names, timestamps, and other metadata might differ.
 
-Usage: 'find-dups [OPTIONS] [DIRECTORY1 [DIRECTORY2 ...]]'
+Usage: 'find-dups [OPTIONS] [DIR_OR_FILE_1 [DIR_OR_FILE_2 ...]]'
 
-If no directory target is given, the current directory (".") is used.
+If no DIR_OR_FILE arguments given, use the current directory (".").
 
-Symbolic links are always ignored.  Hard links to the same underlying
-file count as duplicates, but since the output always shows the inode
-number of each duplicate, you can distinguish between true content
-duplication and the same file merely having multiple names.
+Hard links to the same underlying file count as duplicates, but since
+the output always shows the inode number of each duplicate, you can
+distinguish between true content duplication and the same file merely
+having multiple names.
+
+Symbolic links are ignored.  Therefore, issue a warning if one is
+named as an explicit target (if the link is furthermore broken,
+mention that in the warning).
 
 Options:
+
+  --ignore-missing
+    Ignore (don't warn) about named arguments that don't exist.
+
+    Exception: when a symbolic link is named as an explicit target and
+    that link is broken, then the warning message about ignoring the
+    symbolic link -- which is issued unconditionally because symbolic
+    links are always ignored, and therefore to name one as an explicit
+    target is a bit odd -- will also mention that the link is broken.
 
   --ignore-empty
     Ignore empty files, i.e., don't treat them as dups.
@@ -166,7 +179,10 @@ If there is an IOError opening PATH, return the all-zeros hex digest."""
         return "0" * 32
 
 
-def gather_dups(roots, ignored_directories=[], ignore_empty=False):
+def gather_dups(roots,
+                ignore_missing=False, 
+                ignored_directories=[], 
+                ignore_empty=False):
     """Walk the trees in ROOTS; return info about duplicates.
 The return value is a dictionary mapping hex digests (strings)
 to sub-dictionaries, where each sub-dict maps paths (strings)
@@ -189,55 +205,74 @@ count them as duplicates."""
     # encounter of the same size.
     paths_by_size = { }
 
+    def gather_file(this_dir, f):
+        """Gather file F into paths_by_size.
+        If THIS_DIR is not None, look for F in THIS_DIR."""
+        if this_dir is not None:
+            this_file_path = os.path.join(this_dir, f)
+        else:
+            this_file_path = f
+        if os.path.islink(this_file_path):
+            pass # symlinks are not interesting to us; skip them
+        this_file_stat = os.stat(this_file_path)
+        if ignore_empty and this_file_stat.st_size == 0:
+            pass
+        size_bucket = paths_by_size.get(this_file_stat.st_size, { })
+        if size_bucket: 
+            # We've already found at least one other path with this size.
+
+            # A truly optimal implementation would check for inode
+            # identity too, because if two paths are really hard links
+            # to the same underlying file then obviously they will have
+            # the same content.  Making this optimization would probably
+            # involve another level of hashing somewhere around here.
+            # This circumstance is rare enough that I'm not sure it's
+            # worth the extra complexity, but counter-evidence welcome.
+
+            # Technically, a loop should be unnecessary here, since
+            # there should be at most one existing path key with a None
+            # value.  A loop with a conditional inside it is just a
+            # cheap way to take care of that first case.  However, it
+            # might be good to put a sanity-check assertion anyway.
+            for existing_path in size_bucket.keys():
+                existing_pathinfo = size_bucket[existing_path]
+                if existing_pathinfo is None:
+                    existing_path_stat = os.stat(existing_path)
+                    size_bucket[existing_path] = PathInfo(
+                        existing_path_stat.st_ino,
+                        existing_path_stat.st_mtime,
+                        existing_path_stat.st_size,
+                        md5_file(existing_path, quicksum=True))
+            # Now that we've backfilled the info for the file of this
+            # size already seen, fill in the info for the new file too.
+            size_bucket[this_file_path] = PathInfo(
+                this_file_stat.st_ino,
+                this_file_stat.st_mtime,
+                this_file_stat.st_size,
+                md5_file(this_file_path, quicksum=True))
+        else:
+            # This is the first path found with this size.  Therefore we
+            # record this path, but there is as yet no need to create a
+            # PathInfo object for it.
+            size_bucket[this_file_path] = None
+            paths_by_size[this_file_stat.st_size] = size_bucket
+    
     for root in roots:
-        for this_dir, dirnames, filenames in os.walk(root):
-            dirnames[:] = [d for d in dirnames if d not in ignored_directories]
-            for f in filenames:
-                this_file_path = os.path.join(this_dir, f)
-                if os.path.islink(this_file_path):
-                    continue # symlinks are not interesting to us; skip them
-                this_file_stat = os.stat(this_file_path)
-                if ignore_empty and this_file_stat.st_size == 0:
-                    continue
-                size_bucket = paths_by_size.get(this_file_stat.st_size, { })
-                if size_bucket: 
-                    # We've already found at least one other path with this size.
-
-                    # A truly optimal implementation would check for inode
-                    # identity too, because if two paths are really hard links
-                    # to the same underlying file then obviously they will have
-                    # the same content.  Making this optimization would probably
-                    # involve another level of hashing somewhere around here.
-                    # This circumstance is rare enough that I'm not sure it's
-                    # worth the extra complexity, but counter-evidence welcome.
-
-                    # Technically, a loop should be unnecessary here, since
-                    # there should be at most one existing path key with a None
-                    # value.  A loop with a conditional inside it is just a
-                    # cheap way to take care of that first case.  However, it
-                    # might be good to put a sanity-check assertion anyway.
-                    for existing_path in size_bucket.keys():
-                        existing_pathinfo = size_bucket[existing_path]
-                        if existing_pathinfo is None:
-                            existing_path_stat = os.stat(existing_path)
-                            size_bucket[existing_path] = PathInfo(
-                                existing_path_stat.st_ino,
-                                existing_path_stat.st_mtime,
-                                existing_path_stat.st_size,
-                                md5_file(existing_path, quicksum=True))
-                    # Now that we've backfilled the info for the file of this
-                    # size already seen, fill in the info for the new file too.
-                    size_bucket[this_file_path] = PathInfo(
-                        this_file_stat.st_ino,
-                        this_file_stat.st_mtime,
-                        this_file_stat.st_size,
-                        md5_file(this_file_path, quicksum=True))
-                else:
-                    # This is the first path found with this size.  Therefore we
-                    # record this path, but there is as yet no need to create a
-                    # PathInfo object for it.
-                    size_bucket[this_file_path] = None
-                    paths_by_size[this_file_stat.st_size] = size_bucket
+        if os.path.islink(root):
+            if os.path.exists(root):
+                sys.stderr.write("WARNING: ignoring symbolic link: %s\n" % root)
+            else:
+                sys.stderr.write("WARNING: ignoring (broken) symbolic link: %s\n" % root)
+        else:
+            if (not os.path.exists(root)) and (not ignore_missing):
+                sys.stderr.write("WARNING: path not found: %s\n" % root)
+            elif os.path.isfile(root):
+                gather_file(None, root)
+            else:
+                for this_dir, dirnames, filenames in os.walk(root):
+                    dirnames[:] = [d for d in dirnames if d not in ignored_directories]
+                    for f in filenames:
+                        gather_file(this_dir, f)
 
     # Maps quicksum hex digests (strings) to sub-dictionaries, where
     # each sub-dict maps paths (strings) to PathInfo objects.
@@ -333,13 +368,15 @@ return that name, else return False."""
 
 def main():
     roots = None
+    ignore_missing = False
     ignore_empty = False
     ignored_directories = []
     ignored_if_containing = []
 
     try:
         (opts, args) = getopt.getopt(sys.argv[1:], "h?",
-                                     [ "ignore-empty",
+                                     [ "ignore-missing",
+                                       "ignore-empty",
                                        "ignore-dir=",
                                        "ignore-contained=",
                                        "help", 
@@ -354,6 +391,8 @@ def main():
         if opt in ("-h", "-?", "--help", "--usage"):
             print __doc__;
             sys.exit(0)
+        elif opt in ("--ignore-missing"):
+            ignore_missing = True
         elif opt in ("--ignore-empty"):
             ignore_empty = True
         elif opt in ("--ignore-dir"):
@@ -366,7 +405,7 @@ def main():
     else:
         roots = args
 
-    duplicates = gather_dups(roots, ignored_directories, ignore_empty)
+    duplicates = gather_dups(roots, ignore_missing, ignored_directories, ignore_empty)
 
     # Display each bucket, sorted by modtime within a given bucket.
     for checksum in duplicates.keys():
