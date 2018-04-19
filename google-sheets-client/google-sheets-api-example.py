@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+#
 # Copyright 2018 Open Tech Strategies
 #
 # Based on https://developers.google.com/sheets/api/quickstart/python
@@ -28,7 +30,6 @@
 """
 Shows basic usage of the Sheets API. Prints values from a Google Spreadsheet.
 """
-from __future__ import print_function
 from apiclient.discovery import build
 from httplib2 import Http
 from oauth2client import file, client, tools
