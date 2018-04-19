@@ -41,14 +41,15 @@ config = json.load(open('sheets_config.json'))
 # Grant the Sheets API read only access
 SCOPES = 'https://www.googleapis.com/auth/spreadsheets.readonly'
 
-# This will attempt to open your browser in order to prompt you for
-# access:
-flow = client.OAuth2WebServerFlow(client_id=config['client_id'],
-                           client_secret=config['client_secret'],
-                           scope=SCOPES,
-                           redirect_uri='http://example.com/auth_return')
-store = file.Storage('credentials.json')
-creds = tools.run_flow(flow, store)
+creds_store = file.Storage('credentials.json')
+creds = creds_store.get()
+if not creds or creds.invalid:
+    # Interactively prompt for access creds in browser.
+    flow = client.OAuth2WebServerFlow(client_id=config['client_id'],
+                                      client_secret=config['client_secret'],
+                                      scope=SCOPES,
+                                      redirect_uri='http://example.com/auth_return')
+    creds = tools.run_flow(flow, creds_store)
 
 service = build('sheets', 'v4', http=creds.authorize(Http()))
 
