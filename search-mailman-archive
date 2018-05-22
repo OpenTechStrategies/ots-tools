@@ -55,19 +55,14 @@ curl -L -o ${TMP_PAGE} ${ARCHIVE_ROOT_URL}
 # I think the regexp below will support quarterly and other
 # non-monthly archiving periods, but I've only tested it with
 # monthly (which is Mailman's default and is the most common).
-for gzipped_month in                                                          \
-  `grep -i -E 'href="[0-9][0-9][0-9][0-9]-[a-z0-9]+.txt.gz">\[' "${TMP_PAGE}" \
-    | awk -F'"' '{print $2}'`; do
-  curl -s -L -o ${gzipped_month} "${ARCHIVE_ROOT_URL}/${gzipped_month}"
-  echo "Fetched ${gzipped_month}..."
-  gunzip ${gzipped_month}
-done
-
 for month in                                                          \
-  `grep -i -E 'href="[0-9][0-9][0-9][0-9]-[a-z0-9]+.txt">\[' "${TMP_PAGE}" \
+  `grep -i -E 'href="[0-9][0-9][0-9][0-9]-[a-z0-9]+.txt(\.gz)?">\[' "${TMP_PAGE}" \
     | awk -F'"' '{print $2}'`; do
   curl -s -L -o ${month} "${ARCHIVE_ROOT_URL}/${month}"
   echo "Fetched ${month}..."
+  if [[ ${month: -3} == ".gz" ]]; then
+  	gunzip ${month}
+  fi
 done
 
 echo ""
