@@ -65,7 +65,9 @@ class Row():
                 header = fmt.format(header + ": ")
                 if wrapper is not None:
                     value = wrapper.fill(value)
-                line = header + value[len(header) + 1:]
+                    line = header + value[len(header) + 1:]
+                else:
+                    line = header + value
                 # If we ever need quoting, use json.dumps().
                 ret += "%s\n" % line
                 # Try to DTRT: if the user asked for wrapping, that's
