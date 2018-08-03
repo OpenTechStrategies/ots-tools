@@ -68,6 +68,14 @@ This function modifies the text properties of REF."
            (cond
             ((eq major-mode 'latex-mode)
              (if current-prefix-arg
+                 ;; It's up to the LaTeX author who uses the prefix
+                 ;; arg to make sure there's a LaTeX command called
+                 ;; \oref{...} that does whatever it should do, e.g.,
+                 ;; put the citation into the document in a certain
+                 ;; style, or perhaps just omit the citation (the
+                 ;; latter is useful when you want to have inline,
+                 ;; non-comment citations in the LaTeX source even
+                 ;; though they don't show in the output).
                  (insert (format "\\oref{%s}" citation-str))
                ;; If we're on a blank line (and how I wish that
                ;; Emacs had a native function for asking that),
