@@ -275,11 +275,11 @@ interviewee each time, and to copy-and-paste the exact relevant
 excerpt from the interview notes.  Even if you did all that,
 jumping from the report to a given source -- which is a thing one
 often wants to do -- would involve a laborious manual process of
-searching thorugh interview file(s).
+searching through interview file(s).
 
 Instead, you can just use `oref-do-ref' as described below.  It
 allows you to quickly insert the origin reference in the
-interview notes file and insret the citation reference in the
+interview notes file and insert the citation reference in the
 report; it also allows you jump from citation to origin later.
 
 Here's how to use it:
@@ -299,14 +299,14 @@ there must be only one, from its citation locations, of which
 there may be many.)
 
 When you paste a ref, it adjusts to context appropriately.  For
-example, it may include a mode-specfic comment prefix when pasted
+example, it may include a mode-specific comment prefix when pasted
 on a line by itself in, e.g., LaTeX.  See the documentation for
 `oref-set-ref' for details about `\\[yank]' behavior.
 
 To jump from citation to origin, just put point anywhere within
 the citation ref and run `\\[oref-do-ref]'.  (If it's the first
 time, you may be prompted once to tell Emacs the root of the
-directory tree under which all reference orgins are found.)  See
+directory tree under which all reference origins are found.)  See
 the documentation for `oref-find-ref' for other details about the
 jump behavior.
 
