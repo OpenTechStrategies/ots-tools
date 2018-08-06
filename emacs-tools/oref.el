@@ -278,33 +278,33 @@ often wants to do -- would involve a laborious manual process of
 searching through interview file(s).
 
 Instead, you can just use `oref-do-ref' as described below.  It
-allows you to quickly insert the origin reference in the
-interview notes file and insert the citation reference in the
-report; it also allows you jump from citation to origin later.
+allows you to quickly insert a reference marker (known as an
+\"origin ref\") in the interview notes file and insert a
+corresponding citation (known as a \"citation ref\") in the
+report.  It also allows you jump from citation to origin later.
 
 Here's how to use it:
 
 In the interview notes, run `\\[oref-do-ref]' to insert a new
-origin marker.  It will be a randomly generated reference
-identifier in square braces, like this: \"[ref:34992c31]\".
+origin ref.  It will be a randomly generated reference identifier
+in square braces, like this: \"[ref:34992c31]\".
 
 That reference is now in the clipboard (the Emacs `kill-ring').
-You can now go into the interview document and paste it with
-`\\[yank]''.  The pasted version will just the raw ref without
-the square braces, like so: \"ref:34992c31\".
+You can now go into the interview document and paste a citation
+ref with `\\[yank]''.  The pasted version will just the raw ref
+without the square braces, like so: \"ref:34992c31\".
 
-(The square braces that surround the ref where it was created
-serve to distinguish the reference's origin location, of which
-there must be only one, from its citation locations, of which
-there may be many.)
+(The square braces that surround the origin ref distinguish the
+origin location, of which there must be only one, from its
+citation locations, of which there may be many.)
 
-When you paste a ref, it adjusts to context appropriately.  For
-example, it may include a mode-specific comment prefix when pasted
+When you paste a citation ref, it adjusts to context appropriately.
+For example, it may include a mode-specific comment prefix when pasted
 on a line by itself in, e.g., LaTeX.  See the documentation for
 `oref-set-ref' for details about `\\[yank]' behavior.
 
 To jump from citation to origin, just put point anywhere within
-the citation ref and run `\\[oref-do-ref]'.  (If it's the first
+the citation ref and run `\\[oref-do-ref]'.  (On just the first
 time, you may be prompted once to tell Emacs the root of the
 directory tree under which all reference origins are found.)  See
 the documentation for `oref-find-ref' for other details about the
@@ -313,7 +313,7 @@ jump behavior.
 To grab a reference again so you can paste it as a new citation
 somewhere, just put point anywhere inside the origin ref (e.g.,
 inside the square braces around \"[ref:34992c31]\") and run
-`\\[oref-do-ref]' to put the ref into the clipboard."
+`\\[oref-do-ref]' to add the ref to the clipboard again."
   (interactive)
   (let ((ref (oref-get-ref-at-point)))
     (if ref
