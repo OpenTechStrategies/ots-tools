@@ -264,7 +264,7 @@ For example:
 
 Suppose you're writing a report in LaTeX.  The report relies on a
 bunch of interviews, and your interview notes are in individual
-files, one per interview, in some plaintext format.
+files, or maybe in one big file, in some kind of plaintext format.
 
 Whenever you write an assertion in the report that is based on a
 specific thing an interviewee said, you'd like to note the
