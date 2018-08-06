@@ -24,7 +24,7 @@
 __doc__ = """\
 Manipulate issues associated with a GitHub repository.  Usage:
 
-  $ ./gh-sak --repository OWNER/REPOS [ --infile INPUT_FILE ] COMMAND
+  $ ./gh-sak --root OWNER[/REPOS] [ --infile INPUT_FILE ] COMMAND
 
 OWNER/REPOS is something like "opentechstrategies/ots-tools".
 
@@ -45,6 +45,14 @@ leaked via 'ps' listings, shell history, etc.
 
 Available COMMANDs
 ------------------
+
+* "list-repositories"  (no input file)
+
+   List all the repositories under OWNER (i.e., use with '--root OWNER').
+
+   This is the only command for which the /REPOSITORY component of the
+   parameter to the --root option is not required (indeed, must be
+   left off).
 
 * "issues-summary-org"  (no input file)
 
@@ -150,6 +158,7 @@ least these changes:
 """
 
 import sys
+import time
 import getopt
 import getpass
 import json
@@ -176,7 +185,7 @@ def main():
     try:
         (opts, args) = getopt.getopt(
             sys.argv[1:], "h?", 
-            ["help", "usage", "repository=", "infile=",])
+            ["help", "usage", "root=", "infile=",])
     except getopt.GetoptError as err:
         sys.stderr.write(str(err))
         sys.stderr.write("\n")
@@ -186,26 +195,22 @@ def main():
         if opt in ("-h", "-?", "--help", "--usage",):
             print(__doc__)
             sys.exit(0)
-        elif opt in ("--repository",):
-            owner_name, repos_name = optarg.split("/")
+        elif opt in ("--root",):
+            # '--repository' for backwards compatibility only
+            try:
+                owner_name, repos_name = optarg.split("/")
+            except ValueError:
+                owner_name = optarg
+            if owner_name == "":
+                owner_name = None
+            if repos_name == "":
+                repos_name == None
         elif opt in ("--infile",):
             if optarg == "-":
                 infile = sys.stdin
             else:
                 infile = open(optarg, "r")
         
-    if (owner_name is None) or (repos_name is None):
-        sys.stderr.write("ERROR: '--repository' option must supply "
-                         "owner and repository, like this:\n")
-        sys.stderr.write("\n")
-        sys.stderr.write("  owner_name/repository_name\n")
-        sys.stderr.write("\n")
-        sys.stderr.write("For example:\n")
-        sys.stderr.write("\n")
-        sys.stderr.write("  solutionguidance/psm\n")
-        sys.stderr.write("\n")
-        sys.exit(1)
-
     if len(args) == 1:
         command = args[0]
     elif len(args) < 1:
@@ -215,6 +220,22 @@ def main():
     else:
         sys.stderr.write("ERROR: "
                          "too many commands (run with --help to see usage)\n")
+        sys.exit(1)
+
+    if ((owner_name is None)
+        or ((command != "list-repositories") and (repos_name is None))):
+        sys.stderr.write("ERROR: '--root' option must supply "
+                         "owner and (usually) repository, like this:\n")
+        sys.stderr.write("\n")
+        sys.stderr.write("  owner_name/repository_name\n")
+        sys.stderr.write("\n")
+        sys.stderr.write("For example:\n")
+        sys.stderr.write("\n")
+        sys.stderr.write("  solutionguidance/psm\n")
+        sys.stderr.write("\n")
+        sys.stderr.write("(The repository_name may be omitted for "
+                         "the \"list-repositories\" command.)\n")
+        sys.stderr.write("\n")
         sys.exit(1)
 
     auth_token = getpass.getpass("GitHub authorization token ('?' for help): ")
@@ -238,9 +259,37 @@ def main():
     except github.UnknownObjectException as e:
         owner = g.get_user(owner_name)
 
-    repos = owner.get_repo(repos_name)
+    if repos_name:
+        repos = owner.get_repo(repos_name)
 
-    if command == "issues-summary-org":
+    if command == "list-repositories":
+        # You'd think there'd be a method on owner that would list all
+        # the repositories for that user or organization, but no,
+        # apparently you're supposed to do a generic search keyed on
+        # user (which apparently is synonymous with org for this,
+        # though we try both just in case, since "org" is apparently
+        # supported too and we don't know which kind owner is).
+        #
+        # If it's an org that it uses single sign-on (SSO), you may
+        # need to SSO-authorize your personal access token.  See
+        # https://help.github.com/articles/authorizing-a-personal-access-token-for-use-with-a-saml-single-sign-on-organization/
+        try:
+            repositories = g.search_repositories("user:%s" % owner_name)
+        except:
+            # Probably we never get here?  Not sure.  "user" vs "org",
+            # in both the GitHub API and in PyGithub, is confusing.
+            repositories = g.search_repositories("org:%s" % owner_name)
+        wait_counter = 0
+        for r in repositories:
+            print("%s" % r.full_name)
+            wait_counter += 1
+            # Work around GitHub's search-specific rate-limit.  (There
+            # is also a results-per-query limit of 1000, separate from
+            # the rate limit, but let's solve one thing at a time.)
+            if wait_counter >= 50:
+                wait_counter = 0
+                time.sleep(2.5)
+    elif command == "issues-summary-org":
         # TextWrapper appears to be buggy; at least, this wrapper
         # doesn't have the effects I'd expect it to on an issue
         # body.  Leaving this here for now, but not using it.
