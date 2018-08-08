@@ -313,7 +313,8 @@ jump behavior.
 To grab a reference again so you can paste it as a new citation
 somewhere, just put point anywhere inside the origin ref (e.g.,
 inside the square braces around \"[ref:34992c31]\") and run
-`\\[oref-do-ref]' to add the ref to the clipboard again."
+`\\[oref-do-ref]'.  This will add the ref to both the kill ring 
+and the search ring."
   (interactive)
   (let ((ref (oref-get-ref-at-point)))
     (if ref
@@ -321,7 +322,8 @@ inside the square braces around \"[ref:34992c31]\") and run
             (if (eq (cdr ref) 'source)
                 (progn
                   (oref-copy-ref-as-kill (car ref))
-                  (message "Copied \"%s\"." (car ref)))
+                  (isearch-update-ring (car ref))
+                  (message "Copied \"%s\" to clipboard and to search ring." (car ref)))
               (error (concat
                       (format "Unrecognized ref format: \"%S\".  " ref)
                       "Are you from the future?")))
