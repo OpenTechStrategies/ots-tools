@@ -338,11 +338,13 @@ def main():
                 # commented a day ago", nooooo, it's not a
                 # comment, it's a body.  Every body wants to be
                 # some body, I guess.
-                #
-                # See earlier about how we're not using textwrap right now.
-                # print("%s" % wrapper.fill(ticket.body))
-                print("%s" 
-                      % "\n  ".join(("\n" + ticket.body).splitlines())[1:])
+                if ticket.body is not None:
+                    # See earlier comment about not using textwrap.
+                    # print("%s" % wrapper.fill(ticket.body))
+                    print("%s" 
+                          % "\n  ".join(("\n" + ticket.body).splitlines())[1:])
+                else:
+                    print("<<< THIS TICKET HAS NO BODY >>>")
                 print("")
                 any_labels = False
                 for label in ticket.labels:
