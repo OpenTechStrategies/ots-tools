@@ -37,11 +37,15 @@ GitHub authentication and authorization
 ---------------------------------------
 
 Each time you run this script, you will be prompted for a GitHub
-authorization token.  If you don't have a token, or don't know what
-one is, just hit Enter and you'll be pointed to further instructions.
-We might later add an option to pass the auth token in via a file, but
-we won't pass it via a command line option because then it could be
-leaked via 'ps' listings, shell history, etc.
+authorization token.  If you don't want to be prompted, put the token
+as the first line of a file (you might want to restrict that file's
+permissions so that only you can read it) and pass the file with the
+'--auth-token-file' option, like so:
+
+  $ ./gh-sak --auth-token-file FILE_CONTAINING_TOKEN ...
+
+(We don't offer a way to pass the token directly via the command line
+because then it could be leaked via 'ps' listings, shell history, etc.)
 
 Available COMMANDs
 ------------------
@@ -54,10 +58,10 @@ Available COMMANDs
    parameter to the --root option is not required (indeed, must be
    left off).
 
-* "issues-summary-org"  (no input file)
+* "issues-summary-org"  OR  "pull-requests-summary-org"  (no input file)
 
-  This lists all issues, both open and closed, in an Emacs Org Mode
-  format, like so:
+  This lists all issues (or pull requests), both open and closed, in
+  an Emacs Org Mode format, like so:
 
     * [[https://github.com/blah/blah/issues/3][3]]   (open): issue title
   
@@ -185,7 +189,7 @@ def main():
     try:
         (opts, args) = getopt.getopt(
             sys.argv[1:], "h?", 
-            ["help", "usage", "root=", "infile=",])
+            ["help", "usage", "auth-token-file=", "root=", "infile=",])
     except getopt.GetoptError as err:
         sys.stderr.write(str(err))
         sys.stderr.write("\n")
@@ -195,6 +199,9 @@ def main():
         if opt in ("-h", "-?", "--help", "--usage",):
             print(__doc__)
             sys.exit(0)
+        elif opt in ("--auth-token-file",):
+            with open(optarg, "r") as f:
+                auth_token = f.readline().rstrip()
         elif opt in ("--root",):
             # '--repository' for backwards compatibility only
             try:
@@ -238,7 +245,8 @@ def main():
         sys.stderr.write("\n")
         sys.exit(1)
 
-    auth_token = getpass.getpass("GitHub authorization token ('?' for help): ")
+    if auth_token is None:
+        auth_token = getpass.getpass("GitHub authorization token ('?' for help): ")
     if auth_token == "?" or auth_token == "":
         print("https://help.github.com/articles/"
               "creating-a-personal-access-token-for-the-command-line")
@@ -289,7 +297,12 @@ def main():
             if wait_counter >= 50:
                 wait_counter = 0
                 time.sleep(2.5)
-    elif command == "issues-summary-org":
+    elif (command == "issues-summary-org" 
+          or command == "pull-requests-summary-org"):
+        # We treat issues and PRs pretty much the same, because they
+        # are pretty much the same to GitHub.  The user has to know
+        # what command they invoked, to know what they're seeing.
+
         # TextWrapper appears to be buggy; at least, this wrapper
         # doesn't have the effects I'd expect it to on an issue
         # body.  Leaving this here for now, but not using it.
@@ -301,13 +314,21 @@ def main():
         #                                drop_whitespace=False,
         #                                break_long_words=False,
         #                                break_on_hyphens=False)
-        issues = repos.get_issues(state="all")  # both open and closed
-        for issue in issues:
-            if issue.pull_request is None:
-                print("* [[https://github.com/%s/%s/issues/%d][%3d]] %s: %s" 
-                      % (owner_name, repos_name, issue.number, issue.number,
-                         "{:>8}".format("(" + issue.state + ")"), 
-                         issue.title))
+        tickets = repos.get_issues(state="all")  # both open and closed
+        for ticket in tickets:
+            type_str = "issues"
+            if command == "pull-requests-summary-org":
+                type_str = "pull"
+            if (((command == "issues-summary-org")
+                 and (ticket.pull_request is None))
+                or
+                ((command == "pull-requests-summary-org")
+                 and (ticket.pull_request is not None))):
+                print("* [[https://github.com/%s/%s/%s/%d][%3d]] %s: %s" 
+                      % (owner_name, repos_name, type_str, 
+                         ticket.number, ticket.number,
+                         "{:>8}".format("(" + ticket.state + ")"), 
+                         ticket.title))
                 print("")
                 # The first comment is actually called the 'body',
                 # in the API.  Yes, even though the header of that
@@ -319,16 +340,22 @@ def main():
                 # some body, I guess.
                 #
                 # See earlier about how we're not using textwrap right now.
-                # print("%s" % wrapper.fill(issue.body))
+                # print("%s" % wrapper.fill(ticket.body))
                 print("%s" 
-                      % "\n  ".join(("\n" + issue.body).splitlines())[1:])
+                      % "\n  ".join(("\n" + ticket.body).splitlines())[1:])
                 print("")
                 any_labels = False
-                for label in issue.labels:
+                for label in ticket.labels:
                     if any_labels is False:
                         any_labels = True
                         print("** LABELS")
                     print("   - %s" % label.name)
+                any_comments = False
+                for comment in ticket.get_comments():
+                    if any_comments is False:
+                        any_comments = True
+                        print("** COMMENTS")
+                    print("   - %s (comment #%d at %s)" % (comment.user.name, comment.id, comment.created_at))
     elif command == "list-labels":
         labels = repos.get_labels()
         for label in labels:
