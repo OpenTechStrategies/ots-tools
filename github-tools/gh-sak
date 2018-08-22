@@ -353,11 +353,16 @@ def main():
                         print("** LABELS")
                     print("   - %s" % label.name)
                 any_comments = False
-                for comment in ticket.get_comments():
-                    if any_comments is False:
-                        any_comments = True
-                        print("** COMMENTS")
-                    print("   - %s (comment #%d at %s)" % (comment.user.name, comment.id, comment.created_at))
+                # Getting rate-limited, so just print num comments for now.
+                # We really need to switch to the v4 API, which is more
+                # query-efficient and has a higher rate limit too, but for
+                # now, let's just print comment counts instead of comments.
+                print("** COMMENTS: %d" % ticket.comments)
+                # for comment in ticket.get_comments():
+                #     if any_comments is False:
+                #         any_comments = True
+                #         print("** COMMENTS")
+                #     print("   - %s (comment #%d at %s)" % (comment.user.name, comment.id, comment.created_at))
     elif command == "list-labels":
         labels = repos.get_labels()
         for label in labels:
