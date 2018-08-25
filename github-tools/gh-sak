@@ -166,8 +166,7 @@ import time
 import getopt
 import getpass
 import json
-import github
-import github.GithubException
+import requests
 
 def get_input(infile):
     """Return the data structure represented by the JSON in INFILE.
@@ -178,6 +177,19 @@ def get_input(infile):
                          "       (run with --help to see usage)\n")
         sys.exit(1)
     return json.load(infile)
+
+
+def do_query(query, headers):
+    """Send QUERY to GitHub (v4 GraphQL API) and return the response."""
+    request = requests.post('https://api.github.com/graphql', 
+                            json={'query': query}, 
+                            headers=headers)
+    if request.status_code == 200:
+        return request.json()
+    else:
+        raise Exception("ERROR: error {} returned for query \"{}\".".format(
+            request.status_code, query))
+
 
 def main():
     command = None
@@ -255,245 +267,32 @@ def main():
         print("")
         auth_token = getpass.getpass("GitHub authorization token: ")
 
-    g = github.Github(auth_token)
+    headers = {"Authorization": "Bearer {}".format(auth_token)}
 
-    # We're taking advantage of some lazy polymorphism here.  Either
-    # "organization/repository" or "username/repository" will work,
-    # even though we only advertize the former.  So far, all of the
-    # methods we're invoking exist for either type of object.  If that
-    # changes, we can make a wrapper object to handle method dispatch.
-    try:
-        owner = g.get_organization(owner_name)
-    except github.UnknownObjectException as e:
-        owner = g.get_user(owner_name)
+    query = """
+    {
+      repository(owner: "%s", name: "%s") {
+        issues(first: 30) {
+          nodes {
+            number
+            title
+            state
+            labels(first: 30) {
+              edges {
+                node { 
+                  name,
+                  description
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    """ % (owner_name, repos_name)
 
-    if repos_name:
-        repos = owner.get_repo(repos_name)
-
-    if command == "list-repositories":
-        # You'd think there'd be a method on owner that would list all
-        # the repositories for that user or organization, but no,
-        # apparently you're supposed to do a generic search keyed on
-        # user (which apparently is synonymous with org for this,
-        # though we try both just in case, since "org" is apparently
-        # supported too and we don't know which kind owner is).
-        #
-        # If it's an org that it uses single sign-on (SSO), you may
-        # need to SSO-authorize your personal access token.  See
-        # https://help.github.com/articles/authorizing-a-personal-access-token-for-use-with-a-saml-single-sign-on-organization/
-        try:
-            repositories = g.search_repositories("user:%s" % owner_name)
-        except:
-            # Probably we never get here?  Not sure.  "user" vs "org",
-            # in both the GitHub API and in PyGithub, is confusing.
-            repositories = g.search_repositories("org:%s" % owner_name)
-        wait_counter = 0
-        for r in repositories:
-            print("%s" % r.full_name)
-            wait_counter += 1
-            # Work around GitHub's search-specific rate-limit.  (There
-            # is also a results-per-query limit of 1000, separate from
-            # the rate limit, but let's solve one thing at a time.)
-            if wait_counter >= 50:
-                wait_counter = 0
-                time.sleep(2.5)
-
-    elif command == "issues-summary-org":
-        # TextWrapper appears to be buggy; at least, this wrapper
-        # doesn't have the effects I'd expect it to on an issue
-        # body.  Leaving this here for now, but not using it.
-        #
-        # import textwrap
-        # wrapper = textwrap.TextWrapper(initial_indent='  ',
-        #                                subsequent_indent='  ',
-        #                                replace_whitespace=False,
-        #                                drop_whitespace=False,
-        #                                break_long_words=False,
-        #                                break_on_hyphens=False)
-        issues = repos.get_issues(state="all")  # both open and closed
-        for issue in issues:
-            print("* [[https://github.com/%s/%s/issues/%d][%3d]] %s: %s" 
-                  % (owner_name, repos_name, issue.number, issue.number,
-                     "{:>8}".format("(" + issue.state + ")"), 
-                     issue.title))
-            print("")
-            # The first comment is actually called the 'body',
-            # in the API.  Yes, even though the header of that
-            # comment looks exactly like the header of every
-            # other subsequent comment, and even though the
-            # header of that first comment even *says* "kfogel
-            # commented a day ago", nooooo, it's not a
-            # comment, it's a body.  Every body wants to be
-            # some body, I guess.
-            if issue.body is not None:
-                # See earlier comment about not using textwrap.
-                # print("%s" % wrapper.fill(issue.body))
-                print("%s" 
-                      % "\n  ".join(("\n" + issue.body).splitlines())[1:])
-            else:
-                print("<<< THIS ISSUE HAS NO BODY >>>")
-            print("")
-            any_labels = False
-            for label in issue.labels:
-                if any_labels is False:
-                    any_labels = True
-                    print("** LABELS")
-                print("   - %s" % label.name)
-            any_comments = False
-            # Getting rate-limited, so just print num comments for now.
-            # We really need to switch to the v4 API, which is more
-            # query-efficient and has a higher rate limit too, but for
-            # now, let's just print comment counts instead of comments.
-            print("** COMMENTS: %d" % issue.comments)
-            # for comment in issue.get_comments():
-            #     if any_comments is False:
-            #         any_comments = True
-            #         print("** COMMENTS")
-            #     print("   - %s (comment #%d at %s)" % (comment.user.name, comment.id, comment.created_at))
-            if issue.pull_request is not None:
-                print("** PULL REQUEST: %s" % issue.pull_request.html_url)
-    elif command == "pull-requests-summary-org":
-        pr_tickets = repos.get_pulls(state="all")  # both open and closed
-        for pr_ticket in pr_tickets:
-            print("* [[https://github.com/%s/%s/pull/%d][%3d]] %s: %s" 
-                  % (owner_name, repos_name, pr_ticket.number, pr_ticket.number,
-                     "{:>8}".format("(" + pr_ticket.state + ")"), 
-                     pr_ticket.title))
-            print("")
-            # The first comment is actually called the 'body',
-            # in the API.  Yes, even though the header of that
-            # comment looks exactly like the header of every
-            # other subsequent comment, and even though the
-            # header of that first comment even *says* "kfogel
-            # commented a day ago", nooooo, it's not a
-            # comment, it's a body.  Every body wants to be
-            # some body, I guess.
-            if pr_ticket.body is not None:
-                # See earlier comment about not using textwrap.
-                # print("%s" % wrapper.fill(pr_ticket.body))
-                print("%s" 
-                      % "\n  ".join(("\n" + pr_ticket.body).splitlines())[1:])
-            else:
-                print("<<< THIS PR_TICKET HAS NO BODY >>>")
-            print("")
-            any_labels = False
-            for label in pr_ticket.labels:
-                if any_labels is False:
-                    any_labels = True
-                    print("** LABELS")
-                print("   - %s" % label.name)
-            any_comments = False
-            # Getting rate-limited, so just print num comments for now.
-            # We really need to switch to the v4 API, which is more
-            # query-efficient and has a higher rate limit too, but for
-            # now, let's just print comment counts instead of comments.
-            print("** REVIEW COMMENTS: %d" % pr_ticket.review_comments)
-            print("** COMMENTS: %d" % pr_ticket.comments)
-            # for comment in pr_ticket.get_comments():
-            #     if any_comments is False:
-            #         any_comments = True
-            #         print("** COMMENTS")
-            #     print("   - %s (comment #%d at %s)" % (comment.user.name, comment.id, comment.created_at))
-    elif command == "list-labels":
-        labels = repos.get_labels()
-        for label in labels:
-            print("%s" % label.name)
-    elif command == "edit-issues":
-        elements = get_input(infile)
-        for element in elements:
-            issue_number = element['issue']
-            labels_to_add = element.get('add-labels')
-            labels_to_remove = element.get('remove-labels')
-            if (labels_to_add is None) and (labels_to_remove is None):
-                continue
-            issue = repos.get_issue(issue_number)
-            if labels_to_add is not None:
-                for label_name in labels_to_add:
-                    try:
-                        label = repos.get_label(label_name)
-                    except github.GithubException as e:
-                        label = repos.create_label(label_name, "e2e2e2")
-                    issue.add_to_labels(label)
-            labels_found = issue.labels
-            if labels_to_remove is not None:
-                for label_name in labels_to_remove:
-                    if label_name in [x.name for x in labels_found]:
-                        label = repos.get_label(label_name)
-                        issue.remove_from_labels(label)
-            # We have to refetch the issue to see the above changes take
-            # effect in our local object, because it turns out PyGithub
-            # doesn't automatically keep local objects in sync with the
-            # changes made to upstream.  If we didn't re-fetch, then when
-            # we print out the issue and its labels below, we'd see the
-            # labels from *before* any additions/removals done above.
-            issue = repos.get_issue(issue_number)
-            print("%5d %s: %s" % (issue.number,
-                                  "{:>8}".format("(" + issue.state + ")"),
-                                  issue.title))
-            for label in issue.labels:
-                print("                - label \"%s\"" % label.name)
-    elif command == "edit-labels":
-        elements = get_input(infile)
-        for sublist in elements:
-            old_label_name = None
-            new_label_name = None
-            color = None
-            if len(sublist) == 3:
-                old_label_name = sublist[0]
-                new_label_name = sublist[1]
-                color = sublist[2]
-            elif len(sublist) == 2:
-                old_label_name = sublist[0]
-                new_label_name = sublist[1]
-            elif len(sublist) > 3:
-                sys.stderr.write("ERROR: label sublist too long:\n")
-                sys.stderr.write("       %s\n" % sublist)
-                sys.exit(1)
-            else:
-                sys.stderr.write("ERROR: label sublist too short:\n")
-                sys.stderr.write("       %s\n" % sublist)
-                sys.exit(1)
-            if (color is not None) and (color[0] == "#"):
-                color = color[1:]
-            try:
-                old_label = repos.get_label(old_label_name)
-            except github.UnknownObjectException as e:
-                old_label = None
-            if old_label is None:
-                if old_label_name is not None:
-                    sys.stderr.write("WARNING: label '%s' not found\n" 
-                                     % old_label_name)
-                elif new_label_name is None:
-                    sys.stderr.write("ERROR: "
-                                     "neither old nor new label name given\n")
-                    sys.exit(1)
-                else:
-                    if color is None:
-                        color = "e2e2e2"
-                    repos.create_label(new_label_name, color)
-                    print("CREATED label '%s'" % new_label_name)
-            else: # we have an existing label
-                if new_label_name is None:
-                    if color is None:
-                        old_label.delete()
-                        print("DELETED label '%s'" % old_label_name)
-                    else:
-                        old_label.edit(old_label_name, color)
-                        print("CHANGED label '%s' color to '#%s'" 
-                              % (old_label_name, color))
-                else: # we have a new label name too
-                    if color is None:
-                        color = old_label.color
-                    old_label.edit(new_label_name, color)
-                    if color != old_label.color:
-                        print("RENAMED label '%s' to '%s' (new color '#%s')" 
-                              % (old_label_name, new_label_name, color))
-                    else:
-                        print("RENAMED label '%s' to '%s'" 
-                              % (old_label_name, new_label_name))
-    else:
-        sys.stderr.write("ERROR: unknown command '%s'\n" % command)
-        sys.exit(1)
+    result = do_query(query, headers)
+    print("%s" % json.dumps(result, indent=4, sort_keys=True))
 
 
 if __name__ == '__main__':
