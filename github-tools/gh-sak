@@ -269,10 +269,13 @@ def main():
 
     headers = {"Authorization": "Bearer {}".format(auth_token)}
 
+    # https://graphql.org/learn/pagination/ is a great resource on
+    # pagination models.  GitHub uses the cursor model.
     query = """
     {
       repository(owner: "%s", name: "%s") {
         issues(first: 30) {
+          totalCount
           nodes {
             number
             title
@@ -283,6 +286,7 @@ def main():
                   name,
                   description
                 }
+                cursor
               }
             }
           }
