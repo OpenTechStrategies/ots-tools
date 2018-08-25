@@ -45,7 +45,11 @@ Usage:
 
   $ CMD | dmgrep [-d|--delimiter DELIM_REGEXP] [-i|--ignore-case] REGEXP
 
-(Alternatively, 'dmgrep ... < FILE' works too, of course.)
+or
+
+  $ dmgrep [...] < FILE
+
+Use the '-v' ('--inverse') flag to invert the sense of the match.
 
 Examples:
 
@@ -152,9 +156,7 @@ slightly odd abbreviation for "delimited grep".
 
 After writing this script, I realized it is a generalization of
 http://svn.apache.org/viewvc/subversion/trunk/contrib/client-side/search-svnlog.pl?view=co,
-which has been around for many years.  search-svnlog also supports the
--v (inverted match) option, which wouldn't be too hard to add here,
-but as of this writing in July of 2015, I haven't gotten around to it.
+which has been around for many years.
 
 Run 'dmgrep --summary' to see a compact summary of usage.
 """
@@ -164,26 +166,30 @@ import re
 import getopt
 
 
-def match_maybe_output(body, regexp, leading_delim, out):
+def match_maybe_output(body, regexp, leading_delim, inverse, out):
   """If LEADING_DELIM or BODY match REGEXP, print them to OUT.
 BODY does not include any delimiters; REGEXP is a compiled regexp;
-LEADING_DELIM is a string; OUT is a file handle (e.g., sys.stdout)."""
-  if regexp.search(body) or regexp.search(leading_delim):
+LEADING_DELIM is a string; OUT is a file handle (e.g., sys.stdout).
+If INVERSE is true, invert the sense of the match."""
+  match = regexp.search(body) or regexp.search(leading_delim)
+  if (match and not inverse) or (inverse and not match):
     out.write(leading_delim)
     out.write(body)
 
 
 def main():
   delim_re = None
+  inverse = False
   search_re = None
   search_flags = re.MULTILINE | re.DOTALL
 
   try:
-    (opts, args) = getopt.getopt(sys.argv[1:], "ih?d:", 
+    (opts, args) = getopt.getopt(sys.argv[1:], "ih?d:v", 
                                  ["ignore-case", 
                                   "help",  # same as '--usage'
                                   "usage", 
                                   "summary",
+                                  "inverse",
                                   "delimiter="])
   except getopt.GetoptError, err:
     sys.stderr.write(str(err))
@@ -204,6 +210,8 @@ def main():
       sys.exit(0)
     elif opt in ("-i", "--ignore-case"):
       search_flags |= re.IGNORECASE
+    elif opt in ("-v", "--inverse"):
+      inverse = True
     else:
       print "Unrecognized option '%s'" % opt
       sys.exit(1)
@@ -231,13 +239,15 @@ def main():
     line = sys.stdin.readline()
   while line != '':
     if delim_re.match(line):
-      match_maybe_output(accum, search_re, latest_leading_delim, sys.stdout)
+      match_maybe_output(accum, search_re, latest_leading_delim, 
+                         inverse, sys.stdout)
       accum = ''
       latest_leading_delim = line
     else:
       accum += line
     line = sys.stdin.readline()
-  match_maybe_output(accum, search_re, latest_leading_delim, sys.stdout)
+  match_maybe_output(accum, search_re, latest_leading_delim, 
+                     inverse, sys.stdout)
 
 
 if __name__ == '__main__':
