@@ -297,12 +297,8 @@ def main():
             if wait_counter >= 50:
                 wait_counter = 0
                 time.sleep(2.5)
-    elif (command == "issues-summary-org" 
-          or command == "pull-requests-summary-org"):
-        # We treat issues and PRs pretty much the same, because they
-        # are pretty much the same to GitHub.  The user has to know
-        # what command they invoked, to know what they're seeing.
 
+    elif command == "issues-summary-org":
         # TextWrapper appears to be buggy; at least, this wrapper
         # doesn't have the effects I'd expect it to on an issue
         # body.  Leaving this here for now, but not using it.
@@ -314,55 +310,90 @@ def main():
         #                                drop_whitespace=False,
         #                                break_long_words=False,
         #                                break_on_hyphens=False)
-        tickets = repos.get_issues(state="all")  # both open and closed
-        for ticket in tickets:
-            type_str = "issues"
-            if command == "pull-requests-summary-org":
-                type_str = "pull"
-            if (((command == "issues-summary-org")
-                 and (ticket.pull_request is None))
-                or
-                ((command == "pull-requests-summary-org")
-                 and (ticket.pull_request is not None))):
-                print("* [[https://github.com/%s/%s/%s/%d][%3d]] %s: %s" 
-                      % (owner_name, repos_name, type_str, 
-                         ticket.number, ticket.number,
-                         "{:>8}".format("(" + ticket.state + ")"), 
-                         ticket.title))
-                print("")
-                # The first comment is actually called the 'body',
-                # in the API.  Yes, even though the header of that
-                # comment looks exactly like the header of every
-                # other subsequent comment, and even though the
-                # header of that first comment even *says* "kfogel
-                # commented a day ago", nooooo, it's not a
-                # comment, it's a body.  Every body wants to be
-                # some body, I guess.
-                if ticket.body is not None:
-                    # See earlier comment about not using textwrap.
-                    # print("%s" % wrapper.fill(ticket.body))
-                    print("%s" 
-                          % "\n  ".join(("\n" + ticket.body).splitlines())[1:])
-                else:
-                    print("<<< THIS TICKET HAS NO BODY >>>")
-                print("")
-                any_labels = False
-                for label in ticket.labels:
-                    if any_labels is False:
-                        any_labels = True
-                        print("** LABELS")
-                    print("   - %s" % label.name)
-                any_comments = False
-                # Getting rate-limited, so just print num comments for now.
-                # We really need to switch to the v4 API, which is more
-                # query-efficient and has a higher rate limit too, but for
-                # now, let's just print comment counts instead of comments.
-                print("** COMMENTS: %d" % ticket.comments)
-                # for comment in ticket.get_comments():
-                #     if any_comments is False:
-                #         any_comments = True
-                #         print("** COMMENTS")
-                #     print("   - %s (comment #%d at %s)" % (comment.user.name, comment.id, comment.created_at))
+        issues = repos.get_issues(state="all")  # both open and closed
+        for issue in issues:
+            print("* [[https://github.com/%s/%s/issues/%d][%3d]] %s: %s" 
+                  % (owner_name, repos_name, issue.number, issue.number,
+                     "{:>8}".format("(" + issue.state + ")"), 
+                     issue.title))
+            print("")
+            # The first comment is actually called the 'body',
+            # in the API.  Yes, even though the header of that
+            # comment looks exactly like the header of every
+            # other subsequent comment, and even though the
+            # header of that first comment even *says* "kfogel
+            # commented a day ago", nooooo, it's not a
+            # comment, it's a body.  Every body wants to be
+            # some body, I guess.
+            if issue.body is not None:
+                # See earlier comment about not using textwrap.
+                # print("%s" % wrapper.fill(issue.body))
+                print("%s" 
+                      % "\n  ".join(("\n" + issue.body).splitlines())[1:])
+            else:
+                print("<<< THIS ISSUE HAS NO BODY >>>")
+            print("")
+            any_labels = False
+            for label in issue.labels:
+                if any_labels is False:
+                    any_labels = True
+                    print("** LABELS")
+                print("   - %s" % label.name)
+            any_comments = False
+            # Getting rate-limited, so just print num comments for now.
+            # We really need to switch to the v4 API, which is more
+            # query-efficient and has a higher rate limit too, but for
+            # now, let's just print comment counts instead of comments.
+            print("** COMMENTS: %d" % issue.comments)
+            # for comment in issue.get_comments():
+            #     if any_comments is False:
+            #         any_comments = True
+            #         print("** COMMENTS")
+            #     print("   - %s (comment #%d at %s)" % (comment.user.name, comment.id, comment.created_at))
+            if issue.pull_request is not None:
+                print("** PULL REQUEST: %s" % issue.pull_request.html_url)
+    elif command == "pull-requests-summary-org":
+        pr_tickets = repos.get_pulls(state="all")  # both open and closed
+        for pr_ticket in pr_tickets:
+            print("* [[https://github.com/%s/%s/pull/%d][%3d]] %s: %s" 
+                  % (owner_name, repos_name, pr_ticket.number, pr_ticket.number,
+                     "{:>8}".format("(" + pr_ticket.state + ")"), 
+                     pr_ticket.title))
+            print("")
+            # The first comment is actually called the 'body',
+            # in the API.  Yes, even though the header of that
+            # comment looks exactly like the header of every
+            # other subsequent comment, and even though the
+            # header of that first comment even *says* "kfogel
+            # commented a day ago", nooooo, it's not a
+            # comment, it's a body.  Every body wants to be
+            # some body, I guess.
+            if pr_ticket.body is not None:
+                # See earlier comment about not using textwrap.
+                # print("%s" % wrapper.fill(pr_ticket.body))
+                print("%s" 
+                      % "\n  ".join(("\n" + pr_ticket.body).splitlines())[1:])
+            else:
+                print("<<< THIS PR_TICKET HAS NO BODY >>>")
+            print("")
+            any_labels = False
+            for label in pr_ticket.labels:
+                if any_labels is False:
+                    any_labels = True
+                    print("** LABELS")
+                print("   - %s" % label.name)
+            any_comments = False
+            # Getting rate-limited, so just print num comments for now.
+            # We really need to switch to the v4 API, which is more
+            # query-efficient and has a higher rate limit too, but for
+            # now, let's just print comment counts instead of comments.
+            print("** REVIEW COMMENTS: %d" % pr_ticket.review_comments)
+            print("** COMMENTS: %d" % pr_ticket.comments)
+            # for comment in pr_ticket.get_comments():
+            #     if any_comments is False:
+            #         any_comments = True
+            #         print("** COMMENTS")
+            #     print("   - %s (comment #%d at %s)" % (comment.user.name, comment.id, comment.created_at))
     elif command == "list-labels":
         labels = repos.get_labels()
         for label in labels:
