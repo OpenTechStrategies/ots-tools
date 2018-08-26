@@ -271,6 +271,18 @@ def main():
 
     # https://graphql.org/learn/pagination/ is a great resource on
     # pagination models.  GitHub uses the cursor model.
+    # 
+    # Some other useful pages:
+    # 
+    #   - https://developer.github.com/v4/
+    #   - https://developer.github.com/v4/explorer/
+    #   - https://developer.github.com/v4/guides/forming-calls/#example-query
+    #   - https://developer.github.com/v4/object/repository/
+    #   - https://developer.github.com/v4/guides/intro-to-graphql/
+    #   - GitHub GraphQL API Starred Repositories Examples With Pagination
+    #     https://gist.github.com/obahareth/d974afa16ac84182abc293b306e25928
+    #   - https://medium.com/@mattmazzola/graphql-pagination-implementation-8604f77fb254
+    #   - https://developer.github.com/v4/guides/migrating-from-rest/
     query = """
     {
       repository(owner: "%s", name: "%s") {
