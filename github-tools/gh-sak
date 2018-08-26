@@ -283,33 +283,45 @@ def main():
     #     https://gist.github.com/obahareth/d974afa16ac84182abc293b306e25928
     #   - https://medium.com/@mattmazzola/graphql-pagination-implementation-8604f77fb254
     #   - https://developer.github.com/v4/guides/migrating-from-rest/
+    default_amount = 100
     query = """
     {
       repository(owner: "%s", name: "%s") {
-        issues(first: 30) {
+        issues(first: %d) {
           totalCount
-          nodes {
-            number
-            title
-            state
-            labels(first: 30) {
-              edges {
-                node { 
-                  name,
-                  description
+          edges {
+            node {
+              number
+              title
+              state
+              labels(first: %d) {
+                totalCount
+                edges {
+                  node { 
+                    name
+                    description
+                  }
+                  cursor
                 }
-                cursor
               }
             }
+            cursor
           }
         }
       }
     }
-    """ % (owner_name, repos_name)
+    """ % (owner_name, repos_name, default_amount, default_amount)
 
     result = do_query(query, headers)
+
+    these_issues = result["data"]["repository"]["issues"]["edges"]
+    total_fetched = len(these_issues)
+    total_avail = result["data"]["repository"]["issues"]["totalCount"]
+
     print("%s" % json.dumps(result, indent=4, sort_keys=True))
 
+    print("%d fetched; %d (of %d) remaining" 
+          % (total_fetched, total_avail - total_fetched, total_avail))
 
 if __name__ == '__main__':
     main()
