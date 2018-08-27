@@ -16,6 +16,18 @@ if [ "${1}X" = "-iX" ]; then
     shift
 fi
 
+if [ "${1}X" = "X" ]; then
+    PGM_NAME=`basename ${0}`
+    echo "${PGM_NAME}: " \
+         "Grep recursively, protecting against long lines.  Usage:" >&2
+    echo "" >&2
+    echo "  ${PGM_NAME} [-i] STRING [FILE_OR_DIRECTORY_ROOT]" >&2
+    echo "" >&2
+    echo "  (FILE_OR_DIRECTORY_ROOT defaults to '.')" >&2
+    echo "" >&2
+    exit 1
+fi
+
 ROOT="."
 if [ "${2}X" != "X" ]; then
     ROOT="${2}"
