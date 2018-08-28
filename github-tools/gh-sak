@@ -58,30 +58,35 @@ Available COMMANDs
    parameter to the --root option is not required (indeed, must be
    left off).
 
-* "issues-summary-org"  OR  "pull-requests-summary-org"  (no input file)
+* "tickets-summary-org"  (no input file)
 
-  This lists all issues (or pull requests), both open and closed, in
-  an Emacs Org Mode format, like so:
+  This lists all issues and pull requests, both open and closed/merged,
+  in an Emacs Org Mode format, like so:
 
-    * [[https://github.com/blah/blah/issues/3][3]]   (open): issue title
+    * [[https://github.com/blah/blah/issues/1][1]]   (open): issue title
   
       body (i.e., first comment) here
   
-    ** LABELS
+    ** 3 comments
+    ** 2 labels
        - some label name
        - another label name
 
-    * [[https://github.com/blah/blah/issues/2][1]]   (open): other title
+    * [[https://github.com/blah/blah/issues/2][2]] (closed): other title
   
       other body (i.e., first comment) here
   
-    * [[https://github.com/blah/blah/issues/1][1]] (closed): another title
+    ** 0 comments
+    ** 0 labels
+
+    * [[https://github.com/blah/blah/pull/3][3]] (merged): another title
   
       another body (i.e., first comment) here
-
-    ** LABELS
-       - some label name
-       - yet a third distinct label name
+ 
+    ** 2 comments
+    ** 8 reviews
+    ** 1 labels
+       - yet another label name
 
 * "list-labels"  (no input file)
 
@@ -269,83 +274,174 @@ def main():
 
     headers = {"Authorization": "Bearer {}".format(auth_token)}
 
-    # https://graphql.org/learn/pagination/ is a great resource on
-    # pagination models.  GitHub uses the cursor model.
-    # 
-    # Some other useful pages:
-    # 
-    #   - https://developer.github.com/v4/
-    #   - https://developer.github.com/v4/explorer/
-    #   - https://developer.github.com/v4/guides/forming-calls/#example-query
-    #   - https://developer.github.com/v4/object/repository/
-    #   - https://developer.github.com/v4/guides/intro-to-graphql/
-    #   - GitHub GraphQL API Starred Repositories Examples With Pagination
-    #     https://gist.github.com/obahareth/d974afa16ac84182abc293b306e25928
-    #   - https://medium.com/@mattmazzola/graphql-pagination-implementation-8604f77fb254
-    #   - https://developer.github.com/v4/guides/migrating-from-rest/
-
-    # Double braces because we're going to call .format() on this.
-    query_template = """
-    {{
-      repository(owner: "{}", name: "{}") {{
-        issues(first: {}{}) {{
-          totalCount
-          edges {{
-            node {{
-              number
-              title
-              state
-              labels(first: {}) {{
-                totalCount
-                edges {{
-                  node {{ 
-                    name
-                    description
+    if command == "tickets-summary-org":
+        # Double braces because we're going to call .format() on this.
+        query_template = """
+        {{
+          repository(owner: "{}", name: "{}") {{
+            {}(first: {}{}) {{
+              totalCount
+              edges {{
+                node {{
+                  number
+                  title
+                  state
+                  body
+                  comments(first: {}) {{
+                    totalCount
                   }}
-                  cursor
+                  {}
+                  labels(first: {}) {{
+                    totalCount
+                    edges {{
+                      node {{ 
+                        name
+                        description
+                      }}
+                      cursor
+                    }}
+                  }}
                 }}
+                cursor
               }}
             }}
-            cursor
           }}
         }}
-      }}
-    }}
-    """
-
-    requested_page_size = 100
-    after_str_issues = ""  # could be ", after: \"some_cursor\""
-    total_count = None
-    total_remaining = sys.maxsize
-
-    while total_remaining > 0:
-        this_query = query_template.format(
-            owner_name, repos_name, 
-            requested_page_size, after_str_issues, requested_page_size)
-        # TODO: Dancing the nested-after dance for labels will be a pain.
-        #       There has to be a good abstraction for this.  Hmmmmm.
-        result = do_query(this_query, headers)
-
-        these_issues = result["data"]["repository"]["issues"]["edges"]
-        last_issue_cursor = these_issues[-1]["cursor"]
-        total_fetched = len(these_issues)
-
-        if total_count is None:
-            # This total will never change after being set.
-            total_count = result["data"]["repository"]["issues"]["totalCount"]
-            total_remaining = total_count - total_fetched
-        else:
-            total_remaining = total_remaining - total_fetched
-
-        print("%s" % json.dumps(result, indent=4, sort_keys=True))
-
-        if total_remaining > 0:
-            after_str_issues = ", after: \"{}\"".format(last_issue_cursor)
-
-        print("%d fetched; %d (of %d) remaining" 
-              % (total_fetched, total_remaining, total_count))
+        """
+    
+        requested_page_size = 100
+    
+        # We treat issues and pull requests mostly like they're the same
+        # thing because that's how GitHub treats them.
+        for ticket_type in ("issues", "pullRequests",):
+            after_cursor_str = ""  # could be ", after: \"some_cursor\""
+            total_count = None
+            total_remaining = sys.maxsize
+            while total_remaining > 0:
+                reviews_str = ""
+                if ticket_type == "pullRequests":
+                    reviews_str = "reviews(first: {}) {{ totalCount }}"\
+                        .format(requested_page_size)
+    
+                this_query = query_template.format(
+                    owner_name, repos_name, ticket_type, 
+                    requested_page_size, after_cursor_str, 
+                    requested_page_size, reviews_str, requested_page_size)
+    
+                # TODO: Dancing the nested-after dance for interior lists,
+                #       such as comments, reviews, labels, etc, is hard.
+                #       Is there a good abstraction for this?  Hmmmmm.
+    
+                result = do_query(this_query, headers)
         
+                ticket_edges = \
+                    result["data"]["repository"][ticket_type]["edges"]
+                last_issue_cursor = ticket_edges[-1]["cursor"]
+                total_fetched = len(ticket_edges)
+        
+                for ticket in [te["node"] for te in ticket_edges]:
+                    number  = ticket["number"]
+                    state   = ticket["state"].lower()
+                    title   = ticket["title"]
+    
+                    ticket_url_category = ticket_type
+                    if ticket_type == "pullRequests":
+                        ticket_url_category = "pull"  # Thanks, GitHub.
+                    print("* [[https://github.com/{}/{}/{}/{}][{}]] {}: {}"
+                          .format(owner_name, repos_name, ticket_url_category,
+                                  number, number, 
+                                  "{:>8}".format("(" + state + ")"), 
+                                  title))
+    
+                    # The first comment is actually called the 'body', in
+                    # the API.  Yes, even though the header of that
+                    # comment looks exactly like the header of every other
+                    # subsequent comment, and even though the header of
+                    # that first comment even *says* "kfogel commented a
+                    # day ago", nooooo, it's not a comment, it's a body.
+                    # Every body wants to be some body, I guess.
+                    body = ticket["body"]
+                    if (body is None) or body == "":
+                        body = "<<< THIS TICKET HAS NO BODY >>>"
+                    # TextWrapper appears to be buggy; at least, this
+                    # wrapper doesn't have the effects I'd expect it
+                    # to on an issue body.  Leaving this here for now,
+                    # but not using it.
+                    # 
+                    # import textwrap
+                    # wrapper = textwrap.TextWrapper(initial_indent='  ',
+                    #                                subsequent_indent='  ',
+                    #                                replace_whitespace=False,
+                    #                                drop_whitespace=False,
+                    #                                break_long_words=False,
+                    #                                break_on_hyphens=False)
+                    # print("%s" % wrapper.fill(ticket.body))
+                    print("")
+                    print("{}".
+                          format("\n  ".join(("\n" + body).splitlines())[1:]))
+                    print("")
+    
+                    # Handle comments (and reviews, if this is a PR).
+                    comments_kinds = ["comments", "reviews",]
+                    if ticket_type != "pullRequests":
+                        comments_kinds.remove("reviews")
+                    for comments_kind in comments_kinds:
+                        comments_count = ticket[comments_kind]["totalCount"]
+                        # We don't want to do the pluralization check here.
+                        # Humans like "1 comment" vs "2 comments", but the
+                        # real audience here is machines, not humans.
+                        print("** {} {}".format(comments_count, comments_kind))
+    
+                    # Handle labels.
+                    labels_count = ticket["labels"]["totalCount"]
+                    label_edges = ticket["labels"]["edges"]
+                    print ("** {} labels".format(labels_count))
+                    for label in [le["node"] for le in label_edges]:
+                        print("   - {}".format(label["name"]))
+    
+                # Everything from here down is cursor bookkeeping for pagination.
+                # 
+                # https://graphql.org/learn/pagination/ is a great resource on
+                # pagination models.  GitHub uses the cursor model. 
+                #
+                # Some other good pages:
+                # 
+                # https://developer.github.com/v4/
+                # https://developer.github.com/v4/explorer/
+                # https://developer.github.com/v4/guides/forming-calls/
+                #     (especially #example-query on the above page)
+                # https://developer.github.com/v4/object/repository/
+                # https://developer.github.com/v4/guides/intro-to-graphql/
+                # https://developer.github.com/v4/guides/migrating-from-rest/
+    
+                if total_count is None:
+                    # This total will never change after being set.
+                    total_count = \
+                        result["data"]["repository"][ticket_type]["totalCount"]
+                    total_remaining = total_count - total_fetched
+                else:
+                    total_remaining = total_remaining - total_fetched
+        
+                if total_remaining > 0:
+                    after_cursor_str = ", after: \"{}\""\
+                        .format(last_issue_cursor)
+        
+                # sys.stderr.write("DEBUG: \n")
+                # sys.stderr.write("{}\n".format(
+                #     json.dumps(result, indent=4, sort_keys=True)))
+                # sys.stderr.write(
+                #     "DEBUG: {} {} fetched; {} remaining (of {})\n"
+                #     .format(total_fetched, ticket_type, 
+                #             total_remaining, total_count))
+    else:
+        sys.stderr.write("ERROR: Only 'tickets-summary-org' is implemented so far;\n")
+        sys.stderr.write("       other subcommands coming soon.\n")
         
 
 if __name__ == '__main__':
     main()
+
+
+
+
+
