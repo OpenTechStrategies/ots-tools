@@ -24,7 +24,7 @@
 __doc__ = """\
 Manipulate issues associated with a GitHub repository.  Usage:
 
-  $ ./gh-sak --root OWNER[/REPOS] [ --infile INPUT_FILE ] COMMAND
+  $ ./gh-sak [--root OWNER[/REPOS]] [ --infile INPUT_FILE ] COMMAND
 
 OWNER/REPOS is something like "opentechstrategies/ots-tools".
 
@@ -153,6 +153,10 @@ Available COMMANDs
   The top-level list is processed in order, and each element takes
   effect as soon as it is processed.
 
+* rate-limit-info (no input file)
+
+  Just print information about your current GitHub rate limit status.
+
 Notes
 -----
 
@@ -246,8 +250,9 @@ def main():
                          "too many commands (run with --help to see usage)\n")
         sys.exit(1)
 
-    if ((owner_name is None)
-        or ((command != "list-repositories") and (repos_name is None))):
+    if ((command != "rate-limit-info")
+        and ((owner_name is None)
+             or ((command != "list-repositories") and (repos_name is None)))):
         sys.stderr.write("ERROR: '--root' option must supply "
                          "owner and (usually) repository, like this:\n")
         sys.stderr.write("\n")
@@ -433,9 +438,33 @@ def main():
                 #     "DEBUG: {} {} fetched; {} remaining (of {})\n"
                 #     .format(total_fetched, ticket_type, 
                 #             total_remaining, total_count))
+    elif command == "rate-limit-info":
+        query = """
+        {
+          viewer {
+            login
+          }
+          rateLimit {
+            limit
+            cost
+            remaining
+            resetAt
+          }
+        }
+        """
+        result = do_query(query, headers)
+        limit = result["data"]["rateLimit"]["limit"]
+        cost = result["data"]["rateLimit"]["cost"]
+        remaining = result["data"]["rateLimit"]["remaining"]
+        reset_at = result["data"]["rateLimit"]["resetAt"]
+        print("GitHub rate limit info:")
+        print("  - limit:     {}".format(limit))
+        print("  - cost:      {}".format(limit))
+        print("  - remaining: {}".format(limit))
+        print("  - reset at:  {}".format(limit))
     else:
-        sys.stderr.write("ERROR: Only 'tickets-summary-org' is implemented so far;\n")
-        sys.stderr.write("       other subcommands coming soon.\n")
+        sys.stderr.write("ERROR: Most subcommands aren't implemented yet;\n")
+        sys.stderr.write("       please check back later.\n")
         
 
 if __name__ == '__main__':
