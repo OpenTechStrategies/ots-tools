@@ -341,6 +341,11 @@ def main():
         
                 ticket_edges = \
                     result["data"]["repository"][ticket_type]["edges"]
+
+                # We might have gotten no results.  If so, stop here.
+                if len(ticket_edges) == 0:
+                    break
+
                 last_issue_cursor = ticket_edges[-1]["cursor"]
                 total_fetched = len(ticket_edges)
         
