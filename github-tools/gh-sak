@@ -282,7 +282,7 @@ def main():
     if command == "tickets-summary-org":
         # Double braces because we're going to call .format() on this.
         query_template = """
-        query
+        query TicketsSummaryOrg
         {{
           repository(owner: "{}", name: "{}") {{
             {}(first: {}{}) {{
