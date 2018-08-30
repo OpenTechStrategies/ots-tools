@@ -290,6 +290,7 @@ def main():
                 node {{
                   number
                   title
+                  createdAt
                   state
                   body
                   comments(first: {}) {{
@@ -391,6 +392,8 @@ def main():
                           format("\n  ".join(("\n" + body).splitlines())[1:]))
                     print("")
     
+                    print("** Created: {}".format(ticket["createdAt"][0:10]))
+
                     # Handle comments (and reviews, if this is a PR).
                     comments_kinds = ["comments", "reviews",]
                     if ticket_type != "pullRequests":
