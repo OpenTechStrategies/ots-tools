@@ -447,6 +447,100 @@ def main():
                 #     "DEBUG: {} {} fetched; {} remaining (of {})\n"
                 #     .format(total_fetched, ticket_type, 
                 #             total_remaining, total_count))
+    elif command == "edit-labels":
+        sys.stderr.write("ERROR: the 'edit-labels' command doesn't work yet\n")
+        sys.exit(1)
+        # TODO: Here and in queries, see if variables can simplify the code.
+        # https://developer.github.com/v4/guides/forming-calls/#working-with-variables
+        query_template = """
+        query GetRepositoryLabels
+        {{
+          repository(owner: "{}", name: "{}") {{
+            labels(first: 100) {{
+              edges {{
+                node {{
+                  id
+                  name
+                  description
+                  color
+                  createdAt
+                }}
+              }}
+            }}
+          }}
+        }}
+        """
+
+        # https://developer.github.com/v4/guides/forming-calls/#about-mutations
+        # Hmmm.  It is not obvious how to change aspects of labels.  I
+        # assume that creating or removing labels is not going to be
+        # hard, but haven't actually looked into that part yet.
+        mut_template = """
+        mutation
+        {{
+          fooo
+        }}
+        """
+
+        # This is just the old v3 API / PyGithub-based code.
+        elements = get_input(infile)
+        for sublist in elements:
+            old_label_name = None
+            new_label_name = None
+            color = None
+            if len(sublist) == 3:
+                old_label_name = sublist[0]
+                new_label_name = sublist[1]
+                color = sublist[2]
+            elif len(sublist) == 2:
+                old_label_name = sublist[0]
+                new_label_name = sublist[1]
+            elif len(sublist) > 3:
+                sys.stderr.write("ERROR: label sublist too long:\n")
+                sys.stderr.write("       %s\n" % sublist)
+                sys.exit(1)
+            else:
+                sys.stderr.write("ERROR: label sublist too short:\n")
+                sys.stderr.write("       %s\n" % sublist)
+                sys.exit(1)
+            if (color is not None) and (color[0] == "#"):
+                color = color[1:]
+            try:
+                old_label = repos.get_label(old_label_name)
+            except github.UnknownObjectException as e:
+                old_label = None
+            if old_label is None:
+                if old_label_name is not None:
+                    sys.stderr.write("WARNING: label '%s' not found\n" 
+                                     % old_label_name)
+                elif new_label_name is None:
+                    sys.stderr.write("ERROR: "
+                                     "neither old nor new label name given\n")
+                    sys.exit(1)
+                else:
+                    if color is None:
+                        color = "e2e2e2"
+                    repos.create_label(new_label_name, color)
+                    print("CREATED label '%s'" % new_label_name)
+            else: # we have an existing label
+                if new_label_name is None:
+                    if color is None:
+                        old_label.delete()
+                        print("DELETED label '%s'" % old_label_name)
+                    else:
+                        old_label.edit(old_label_name, color)
+                        print("CHANGED label '%s' color to '#%s'" 
+                              % (old_label_name, color))
+                else: # we have a new label name too
+                    if color is None:
+                        color = old_label.color
+                    old_label.edit(new_label_name, color)
+                    if color != old_label.color:
+                        print("RENAMED label '%s' to '%s' (new color '#%s')" 
+                              % (old_label_name, new_label_name, color))
+                    else:
+                        print("RENAMED label '%s' to '%s'" 
+                              % (old_label_name, new_label_name))
     elif command == "rate-limit-info":
         query = """
         {
