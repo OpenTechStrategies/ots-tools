@@ -279,6 +279,11 @@ def main():
 
     headers = {"Authorization": "Bearer {}".format(auth_token)}
 
+    ### 2018-08-30: Okay, development on this GraphQL-speaking
+    ### version of gh-sak is officially suspended until GitHub
+    ### gets around to implementing at least the v3 APIs we used.
+    ### https://twitter.com/kfogel/status/1035347388112752640
+
     if command == "tickets-summary-org":
         # Double braces because we're going to call .format() on this.
         query_template = """
