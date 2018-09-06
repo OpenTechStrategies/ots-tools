@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2015 Karl Fogel
+# Copyright (c) 2015, 2018 Karl Fogel
 # 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,6 +17,16 @@
 # along with this program, see <http://www.gnu.org/licenses/>.
 
 """Print delimited sections of input that match a given regexp.  
+
+Usage:
+
+  $ CMD | dmgrep [-d|--delimiter DELIM_REGEXP] [-i|--ignore-case] REGEXP
+  -OR-
+  $ dmgrep [...] < FILE
+
+Use the '-v' ('--inverse') flag to invert the sense of the match.
+
+Detailed explanation:
 
 "Delimited" means there is some sort of single-line delimiter
 separating sections from each other.  This is common in many output
@@ -41,19 +51,10 @@ You can specify a custom delimiter regexp at run-time, but if you
 don't then a default delimiter regexp is used, matching a set of
 well-known delimiters that includes at least the two mentioned above.
 
-Usage:
-
-  $ CMD | dmgrep [-d|--delimiter DELIM_REGEXP] [-i|--ignore-case] REGEXP
-
-or
-
-  $ dmgrep [...] < FILE
-
-Use the '-v' ('--inverse') flag to invert the sense of the match.
-
 Examples:
 
-  git@github.com:OpenTechStrategies/smoke-alarm-portal.git
+  $ git clone git@github.com:OpenTechStrategies/smoke-alarm-portal.git
+  $ cd smoke-alarm-portal
   $ git log --name-status | dmgrep "[Rr]einstate"
   commit 52964c56964cc454b4239d3cada61e0577db897b
   Author: Noel Taylor <example@opentechstrategies.com>
