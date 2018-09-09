@@ -32,6 +32,9 @@ Available options:
   -e ENC | --encoding=ENC         Assume CSV input in encoding ENC.
 
 Example values for ENC: "utf-8", "latin1" or "ISO-8859-1", etc.
+
+If you need to do fancier things with CSV files, you might want to try
+csvkit (http://csvkit.rtfd.org/) or xsv (https://github.com/BurntSushi/xsv).
 """
 
 import os
