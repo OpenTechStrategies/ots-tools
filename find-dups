@@ -213,7 +213,7 @@ count them as duplicates."""
         else:
             this_file_path = f
         if os.path.islink(this_file_path):
-            pass # symlinks are not interesting to us; skip them
+            return # symlinks are not interesting to us; skip them
         this_file_stat = os.stat(this_file_path)
         if ignore_empty and this_file_stat.st_size == 0:
             pass
