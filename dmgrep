@@ -228,7 +228,15 @@ def main():
     sys.exit(1)
     
   if delim_re is None:
-    delim_re = re.compile("^(-{72}|commit [a-z0-9]{40})$")
+    delim_re = re.compile(
+        # Revision separator in a series of Subversion log messages.
+        "^(-{72}"
+        "|"
+        # Git commits.
+        "commit [a-z0-9]{40})$"
+        "|"
+        # Output of 'find-dups' (also in 'ots-tools', like 'dmgrep').
+        "[a-z0-9]{32} \\([0-9]+ identical files, each [0-9]+ bytes\\):")
     
   search_re = re.compile(args[0], flags=search_flags)
 
