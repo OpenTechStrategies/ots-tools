@@ -1,7 +1,8 @@
 ;;; OREF: A system for marking and citing sources in plaintext documents.
 ;;
 ;; The recommended entry point is `oref-do-ref' -- see its doc string
-;; for more about what refs are and how to use them.
+;; for more about what refs are and how to use them.  See the section
+;; "Installation" below for how to install this package into Emacs.
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; 
@@ -22,6 +23,23 @@
 ;; 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+
+;;;; Installation ;;;;
+;;
+;; Put something like this in your .emacs file -- you may need to
+;; adjust the path to "oref.el" of course:
+;;
+;;   (let ((oref-el (expand-file-name "~/OTS/ots-tools/emacs-tools/oref.el")))
+;;     ;; Hint: git clone git@github.com:OpenTechStrategies/ots-tools.git
+;;     (when (file-exists-p oref-el)
+;;       (load oref-el)
+;;       ;; Make `C-c o' run `oref-do-ref'.  You can choose any single-letter
+;;       ;; key, of course -- it doesn't have to be "o".
+;;       (global-set-key "\C-co" 'oref-do-ref)))
+;;
+;;;;;;;;;;;;;;;;;;;;;;
+
+
 ;; Require `subr-x' because all the good string functions are defined
 ;; there and it might not be loaded by default.  I found this out when
 ;; a fairly young Emacs session failed in `oref-find-ref-internal'
