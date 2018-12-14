@@ -253,8 +253,14 @@ If you're considering binding this to a key, see `oref-do-ref' instead."
   (unless oref-ref-files-cache
     (call-interactively 'oref-ref-files-rebuild-cache))
   (while (not (oref-find-ref-internal ref))
-    ;; We didn't find a match.  Give the user chances to rebuild
-    ;; the ref file index (e.g., perhaps starting from higher up).
+    ;; TODO: Here is where to fix issue #9.  `oref-find-ref-internal'
+    ;; should probably become `oref-find-ref-in-files', with
+    ;; `oref-find-ref-in-buffers' as a separate new function.  I'm not
+    ;; sure what order to try them in; it may not matter much.
+    ;;
+    ;; Anyway, if whatever we did to find the origin ref didn't work,
+    ;; then offer user a chance to rebuild the ref file index (e.g.,
+    ;; perhaps starting from higher up).
     (message (concat "Ref not found.  "
                      "Will offer you a chance to rebuild the index..."))
     (sit-for 2)
