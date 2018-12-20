@@ -132,27 +132,38 @@ If you're considering binding this to a key, see `oref-do-ref' instead."
     (oref-copy-ref-as-kill ref-str)))
 
 
-(defun oref-get-ref-at-point (&optional pair-if-source)
+(defun oref-get-ref-at-point ()
   "Return the ref (a string starting with \"ref:\") at point, else nil.
-If optional argument PAIR-IF-SOURCE is non-nil, then if there is a ref
-at point and it is the source ref (i.e., the origin, in square braces),
+If the ref at point is a source ref (i.e., the origin, in square braces),
 then return a cons cell: (REF-STR-WITHOUT-SQUARE-BRACES . 'source)."
   (let* ((ref        (thing-at-point 'filename))
          (ref-bounds (bounds-of-thing-at-point 'filename))
          (ref-start  (car ref-bounds))
          (ref-end    (cdr ref-bounds)))
     (when ref
-      (let ((ref (substring-no-properties ref)))
-        (when (and (> (length ref) 4)
-                   (string-equal (substring ref 0 4) "ref:"))
-          (save-match-data
-            (string-match "^\\(ref:[a-z0-9]+\\)" ref)
-            (setq ref (match-string 1 ref)))
-          (when (and (> ref-start (point-min))
-                     (= (char-after (1- ref-start)) ?\[)
-                     (= (char-after     ref-end)    ?\]))
-            (setq ref (cons ref 'source)))
-          ref)))))
+      (setq ref (substring-no-properties ref))
+      (save-match-data
+        (cond
+         ((string-match "\\([a-z]+\\){\\(\\[?ref:[a-z0-9]+\\]?\\)}" ref)
+          ;; The thing-at-point library makes an odd decision about when
+          ;; it comes to LaTeX commands like "\otsref{ref:6a881020}": it
+          ;; considers the entire command -- not including the leading
+          ;; backslash -- to match as a filename.  So if we're in that
+          ;; case, handle it specially.
+          (setq ref-start (+ ref-start (length (match-string 1 ref))))
+          (setq ref-end (- ref-end 1))
+          (setq ref (substring (match-string 2 ref))))
+         ((and (> (length ref) 4) (string-equal (substring ref 0 4) "ref:"))
+          ;; Otherwise, filename match probably did the right thing,
+          ;; so just handle the ref in the normal way.
+          (string-match "^\\(ref:[a-z0-9]+\\)" ref)
+          (setq ref (match-string 1 ref))))
+        ;; If it's an origin ref, indicate that.
+        (when (and (> ref-start (point-min))
+                   (= (char-after (1- ref-start)) ?\[)
+                   (= (char-after     ref-end)    ?\]))
+          (setq ref (cons ref 'source)))
+        ref))))
 
 (defvar oref-ref-files-cache nil
   "Cache of files that contain [ref:] tags.
