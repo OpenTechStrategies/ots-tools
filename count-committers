@@ -56,8 +56,36 @@ TOTAL_COUNT=`wc -l ${TMP_FILE} | cut -d' ' -f 1`
 echo "${TOTAL_COUNT} commits:"
 echo "--------------"
 
-sed -e 's/<[^@]*@[^@]*>//g' < ${TMP_FILE} > ${TMP_FILE}-tmp
-mv ${TMP_FILE}-tmp ${TMP_FILE}
+# We used to filter out the email address portion.  E.g.,
+# "Maria Marquez <mmarquez@example.com>" would become just
+# "Maria Marquez".
+#
+#   sed -e 's/<[^@]*@[^@]*>//g' < ${TMP_FILE} > ${TMP_FILE}-tmp
+#   mv ${TMP_FILE}-tmp ${TMP_FILE}
+# 
+# However, it turns out that the email address is often useful for
+# disambiguating and unifying identities.  For example, take the
+# repository https://github.com/firefox-devtools/debugger, which has
+# all of the following authors:
+# 
+#   yulia <yulia.startsev {_AT_} gmail.com>
+#   yulia <io.ctapueb {_AT_} gmail.com>
+#   codehag <yulia.startsev {_AT_} gmail.com>
+#   Yulia Tsyba <yulia.v.tsyba {_AT_} gmail.com>
+#
+# The first and third are obviously the same person; the fourth 
+# is probably different from that person, and the third could
+# be the same as or different from any of them.  But without
+# the email addresses, the first two will be unified into one
+# person in the the output and we'd have no clue that there was
+# even a question about it, the third one would look completely
+# distinct when in fact we know it's the same person, and the
+# fourth we would speculate is the same as the first two when
+# it's likely a different person entirely.
+# 
+# (Really, we should be treating the same email address as the same
+# identity even when the username is different -- the fact that we
+# don't is kind of a bug, actually, now filed in issue #10.)
 
 sed -e 's/^Author: //g' < ${TMP_FILE} > ${TMP_FILE}-tmp
 mv ${TMP_FILE}-tmp ${TMP_FILE}
