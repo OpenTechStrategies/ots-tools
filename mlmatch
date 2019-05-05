@@ -1,0 +1,107 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+# Copyright (c) 2019 Karl Fogel
+# 
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+# 
+# If you did not receive a copy of the GNU General Public License
+# along with this program, see <http://www.gnu.org/licenses/>.
+
+"""Print files that contain a given multiline pattern.
+
+Usage:
+
+  $ mlmatch [-v] [-p PATTERN_FILE] [-m|--mid-line] FILE_1 [FILE_2 ...]
+
+mlmatch will print just the names of the files that contain (i.e.,
+have as a substring) the contents of PATTERN_FILE or of stdin.
+
+Options:
+
+  -v                 Print non-matching files instead of matching.
+  -p PATTERN_FILE    Use contents of PATTERN_FILE as search string.
+  -m | --mid-line    Allow a match to start in the middle of a line.
+
+(One could do this with 'grep -P' or 'pcregrep' or 'pcre2grep',
+with enough effort, but when all you care about is an exact match,
+it's nice to be able to not worry about regexp-quoting.)
+
+Possible enhancement: an option to ignore whitespace at the beginnings
+and/or ends of pattern lines.  Implementation-wise, that would involve
+turning the pattern into a regexp and doing a different kind of match.
+"""
+
+import sys
+import re
+import getopt
+
+def main():
+    pat = None
+    inverse = False
+    allow_midline_match = False
+
+    try:
+        (opts, args) = getopt.getopt(sys.argv[1:], "p:h?mv",
+                                     ["pattern=", 
+                                      "help",  # same as '--usage'
+                                      "usage", 
+                                      "mid-line",
+                                      "inverse",
+                                      "delimiter="])
+    except getopt.GetoptError, err:
+        sys.stderr.write(str(err))
+        sys.stderr.write("\n")
+        sys.exit(1)
+
+    for opt, optarg in opts:
+        if opt in ("-p", "--pattern"):
+            pat = open(optarg).read()
+        elif opt in ("-m", "--mid-line"):
+            allow_midline_match = True
+        elif opt in ("-h", "-?", "--help", "--usage"):
+            print __doc__;
+            sys.exit(0)
+        elif opt in ("-v", "--inverse"):
+            inverse = True
+        else:
+            print "Unrecognized option '%s'" % opt
+            sys.exit(1)
+
+    if len(args) < 1:
+        sys.stderr.write("ERROR: No target files given; "
+                         "at least one required.\n")
+        sys.stderr.write("       (Run with '--usage' flag "
+                         "to see documentation.)\n")
+        sys.exit(1)
+    
+    if pat is None:
+        pat = sys.stdin.read()
+
+    for candidate in args:
+        # For the files I tend to search in, loading the whole file
+        # into memory is fine.  If y'all need some kind of chunked
+        # split-window Boyer-Moore fandango, well, patches welcome.
+        contents = open(candidate).read()
+        matched = False
+        idx = contents.find(pat)
+        if ((idx != -1)
+            and ((idx == 0) 
+                 or allow_midline_match
+                 or (contents.find("\n" + pat) != -1))):
+            matched = True
+        if matched and not inverse:
+            print("%s" % candidate)
+        elif not matched and inverse:
+            print("%s" % candidate)
+
+if __name__ == '__main__':
+  main()
