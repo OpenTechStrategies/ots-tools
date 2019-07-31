@@ -7,6 +7,7 @@ silently.
 
 """
 
+import contextlib
 import os
 import subprocess
 import sys
@@ -27,7 +28,6 @@ def slurp(fname):
     with open(fname) as fh:
         return fh.read()
 
-import contextlib
 @contextlib.contextmanager
 def cd(path):
     """Non-robust context manager to change dir    """
