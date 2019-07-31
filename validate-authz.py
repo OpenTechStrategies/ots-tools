@@ -24,10 +24,6 @@ try:
 except IndexError:
     repo_dir = os.environ['OTSDIR']
     
-def slurp(fname):
-    with open(fname) as fh:
-        return fh.read()
-
 @contextlib.contextmanager
 def cd(path):
     """Non-robust context manager to change dir    """
