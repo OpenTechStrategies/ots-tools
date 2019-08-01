@@ -12,17 +12,9 @@ import os
 import subprocess
 import sys
 
-try:
-    authz_dir, authz_fname = os.path.split(sys.argv[1])
-except IndexError:
-    authz_dir = os.path.join(os.environ['OTSDIR'],
-                             "infra/svn-server/srv/svn/repositories/auth")
-    authz_fname = "ots-authz-file"
-
-try:
-    repo_dir = sys.argv[2]
-except IndexError:
-    repo_dir = os.environ['OTSDIR']
+def slurp(fname):
+    with open(fname) as fh:
+        return fh.read()
     
 @contextlib.contextmanager
 def cd(path):
@@ -32,19 +24,57 @@ def cd(path):
     yield
     os.chdir(prev_cwd)
 
-with cd(authz_dir):
-    cmd = "svn log --diff -l 1 {}".format(authz_fname)
-    svn = subprocess.check_output(cmd, shell=True).decode('UTF-8').split("\n")
-    cmd = "svn diff {}".format(authz_fname)
-    svn += subprocess.check_output(cmd, shell=True).decode('UTF-8').split("\n")
-    missing = []
-    for line in [l for l in svn if l.startswith("+[")]:
-        token = '+[/trunk/'
-        if line.startswith(token):
-            path = line[len(token):-1]
-            fname = os.path.join(repo_dir, path)
-            if not os.path.exists(fname):
-                missing.append(fname)
-    if missing:
-        for fname in missing:
-            sys.stderr.write("/trunk{}\n".format(fname[len(repo_dir):]))
+def dirs_must_exist(authz_fname, repo_dir):    
+        cmd = "svn log --diff -l 1 {}".format(authz_fname)
+        svn = subprocess.check_output(cmd, shell=True).decode('UTF-8').split("\n")
+        cmd = "svn diff {}".format(authz_fname)
+        svn += subprocess.check_output(cmd, shell=True).decode('UTF-8').split("\n")
+        missing = []
+        for line in [l for l in svn if l.startswith("+[")]:
+            token = '+[/trunk/'
+            if line.startswith(token):
+                path = line[len(token):-1]
+                fname = os.path.join(repo_dir, path)
+                if not os.path.exists(fname):
+                    missing.append(fname)
+        if missing:
+            sys.stderr.write("Dirs that exist in authz but not in filesystem:\n")
+            for fname in missing:
+                sys.stderr.write("/trunk{}\n".format(fname[len(repo_dir):]))
+                sys.exit(1)
+
+def dirs_must_be_unique(authz_fname, repo_dir):
+    """Make sure dirs aren't listed multiple times in the file."""
+    adds = []
+    dupes = []
+    for line in slurp(authz_fname).split("\n"):
+        line = line.strip()
+        if not line.startswith('['):
+            continue
+        if line in adds:
+            dupes.append(line)
+        adds.append(line)
+        
+    if dupes:
+        sys.stderr.write("Directory lines that appear twice:\n")
+        for dupe in dupes:
+            sys.stderr.write("{}\n".format(dupe))
+    sys.exit(1)
+    
+if __name__ == "__main__":
+    try:
+        authz_dir, authz_fname = os.path.split(sys.argv[1])
+    except IndexError:
+        authz_dir = os.path.join(os.environ['OTSDIR'],
+                                 "infra/svn-server/srv/svn/repositories/auth")
+        authz_fname = "ots-authz-file"
+
+    try:
+        repo_dir = sys.argv[2]
+    except IndexError:
+        repo_dir = os.environ['OTSDIR']
+        
+    with cd(authz_dir):
+        dirs_must_exist(authz_fname, repo_dir)
+        dirs_must_be_unique(authz_fname, repo_dir)
+    sys.exit(0)
