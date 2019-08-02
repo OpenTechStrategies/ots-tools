@@ -27,6 +27,7 @@ Available options:
 
   -h | -? | --help | --usage      Show this help.
   -s ROW | --start ROW            Start with headers on row ROW.
+  -q | --quiet                    Show just headers and row count.
   -n | --number-rows              Show row numbers.
   -w WIDTH | --wrap=WIDTH         Wrap at WIDTH (use "-" to auto-detect).
   -e ENC | --encoding=ENC         Assume CSV input in encoding ENC.
@@ -92,17 +93,20 @@ def main():
     csv_file = None
     csv_reader = None
     encoding = 'utf-8'
+    quiet = False
     rows = []
     wrapper = None
     wrap_width = None
     header_start_row = 1
     number_rows = False   # Flag for whether or not to print row_number
-    row_number = 0        # Keep track, no matter what value of flag is
+    raw_row_number = 0    # Keep track, no matter what value of flag is
+    data_row_number = 0   # But separately track rows after header.
 
     try:
-        opts, args = getopt.getopt(sys.argv[1:], 'h?nw:s:e:', 
+        opts, args = getopt.getopt(sys.argv[1:], 'h?nqw:s:e:', 
                                    ["help", "usage", 
                                     "number-rows"
+                                    "quiet"
                                     "wrap=",
                                     "start=", 
                                     "encoding="])
@@ -125,6 +129,8 @@ def main():
             encoding = a
         elif o in ("-s", "--start",):
             header_start_row = int(a)
+        elif o in ("-q", "--quiet",):
+            quiet = True
         elif o in ("-n", "--number-rows",):
             number_rows = True
         else:
@@ -166,7 +172,7 @@ def main():
     while header_start_row > 0:
         headers = next(csv_reader)
         header_start_row -= 1
-        row_number += 1
+        raw_row_number += 1
 
     print("Headers:")
     print("")
@@ -180,7 +186,13 @@ def main():
         max_header_length = max(max_header_length, len(header))
         seen_headers[header] = True
     print("")
-    print("Rows:")
+
+    def maybe_print(s):
+        """Print string S unless 'quiet'."""
+        if not quiet:
+            print("%s" % s)
+
+    maybe_print("Rows:")
     if wrap_width is not None:
         wrapper = textwrap.TextWrapper(
             width=wrap_width,
@@ -195,15 +207,19 @@ def main():
             break_long_words=False,
             break_on_hyphens=False)
     for row in csv_reader:
-        row_number += 1
+        data_row_number += 1
+        raw_row_number += 1
         row = Row(headers, row)
         sep = "=" * max_header_length
         if number_rows:
-            num_str = "===== Row %d: " % row_number
+            num_str = "===== Row %d: " % data_row_number
             sep = num_str + "=" * max(5, (max_header_length - len(num_str)))
-        print("%s" % sep)
-        print("%s" % row.aligned_str(max_header_length, wrapper))
-
+        maybe_print("%s" % sep)
+        maybe_print("%s" % row.aligned_str(max_header_length, wrapper))
+    if quiet:
+        print("%d  total rows (including header)" % raw_row_number)
+        print("%d   data rows (following header)" % data_row_number)
+        print("")
 
 if __name__ == '__main__':
     main()
