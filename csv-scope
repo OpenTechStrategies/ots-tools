@@ -97,7 +97,7 @@ def main():
     wrap_width = None
     header_start_row = 1
     number_rows = False   # Flag for whether or not to print row_number
-    row_number = 1        # Keep track, no matter what value of flag is
+    row_number = 0        # Keep track, no matter what value of flag is
 
     try:
         opts, args = getopt.getopt(sys.argv[1:], 'h?nw:s:e:', 
@@ -195,6 +195,7 @@ def main():
             break_long_words=False,
             break_on_hyphens=False)
     for row in csv_reader:
+        row_number += 1
         row = Row(headers, row)
         sep = "=" * max_header_length
         if number_rows:
@@ -202,7 +203,6 @@ def main():
             sep = num_str + "=" * max(5, (max_header_length - len(num_str)))
         print("%s" % sep)
         print("%s" % row.aligned_str(max_header_length, wrapper))
-        row_number += 1
 
 
 if __name__ == '__main__':
