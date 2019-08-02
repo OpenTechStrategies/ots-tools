@@ -290,7 +290,7 @@ Introduction to the OREF system:
 ================================
 
 OREF allows you to quickly mark and traverse place-specific
-connections between documents.  It is typically used for
+connections between documents.  It is typically used to record
 connections that are kept in the background, accessible only to
 those working with a document's plaintext source (e.g., LaTeX,
 DocBook XML, etc).
@@ -302,8 +302,8 @@ bunch of interviews, and your interview notes are in individual
 files, or maybe in one big file, in some kind of plaintext format.
 
 Whenever you write an assertion in the report that is based on a
-specific thing an interviewee said, you'd like to note the
-connection by citing that thing in a LaTeX comment.
+specific sentence an interviewee said, you'd like to note the
+connection by citing that sentence in a LaTeX comment.
 
 But it would be too time-consuming to write out the name of the
 interviewee each time, and to copy-and-paste the exact relevant
@@ -316,7 +316,8 @@ Instead, you can just use `oref-do-ref' as described below.  It
 allows you to quickly insert a reference marker (known as an
 \"origin ref\") in the interview notes file and insert a
 corresponding citation (known as a \"citation ref\") in the
-report.  It also allows you jump from citation to origin later.
+report.  It also allows you jump quickly from citation to origin
+later.
 
 Here's how to use it:
 
@@ -326,7 +327,7 @@ in square braces, like this: \"[ref:34992c31]\".
 
 That reference is now in the clipboard (the Emacs `kill-ring').
 You can now go into the interview document and paste a citation
-ref with `\\[yank]''.  The pasted version will just the raw ref
+ref with `\\[yank]''.  The pasted version will be just the raw ref
 without the square braces, like so: \"ref:34992c31\".
 
 (The square braces that surround the origin ref distinguish the
