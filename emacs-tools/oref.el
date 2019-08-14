@@ -347,7 +347,7 @@ the documentation for `oref-find-ref' for other details about the
 jump behavior.
 
 To grab a reference again so you can paste it as a new citation
-somewhere, just put point anywhere inside the origin ref (e.g.,
+somewhere, just put point anywhere inside the origin ref (i.e.,
 inside the square braces around \"[ref:34992c31]\") and run
 `\\[oref-do-ref]'.  This will add the ref to both the kill ring 
 and the search ring."
