@@ -318,10 +318,14 @@ top, where \"Foo\" is a short-but-recognizeable name for the client."
   ;; But for now, we solve it by rebinding 'g' :-).
   (let ((org-agenda-buffer-name "*OTS Deliverables*") 
         (org-agenda-overriding-header
-         (if days-into-future 
-             (format "OTS deliverables (up to %d days from now):" 
-                     days-into-future)
-           "All OTS deliverables:"))
+         (concat
+          (if days-into-future 
+              (format "OTS deliverables through %d days from now.\n" 
+                      days-into-future)
+            "All OTS deliverables.\n")
+          "Type `g' to refresh; " 
+          "use prefix arg to set time horizon in days."
+          "\n"))
         (org-agenda-hide-tags-regexp "^DUE$")
         (org-use-tag-inheritance nil)
         (org-agenda-skip-function
