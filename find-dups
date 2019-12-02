@@ -411,15 +411,18 @@ def main():
     else:
         roots = args
 
-    duplicates = gather_dups(roots, ignore_missing, ignored_directories, ignore_empty)
+    dups = gather_dups(roots, ignore_missing, ignored_directories, ignore_empty)
 
     # Display the buckets sorted overall by total duplicated size,
     # and within a bucket sort by modtime.
-    for checksum in sorted(duplicates, 
-                           key=lambda elt: (
-                               duplicates[elt][random.choice(duplicates[elt].keys())].size_for_display * (len(duplicates[elt]) - 1)),
-                           reverse=True):
-        paths = duplicates[checksum].keys()
+    for checksum in sorted(
+            dups, 
+            key=lambda g: (
+                dups[g][random.choice(dups[g].keys())].size_for_display
+                * (len(dups[g]) - 1)
+            ),
+            reverse=True):
+        paths = dups[checksum].keys()
         size = None
         mtime_sorted_paths = [ ]
 
@@ -429,8 +432,8 @@ def main():
 
         for path in paths:
             if size is None:
-                size = duplicates[checksum][path].size_for_display
-            mtime_sorted_paths.append((path, duplicates[checksum][path]))
+                size = dups[checksum][path].size_for_display
+            mtime_sorted_paths.append((path, dups[checksum][path]))
         mtime_sorted_paths = sorted(mtime_sorted_paths, 
                                     key=lambda tup: tup[1].mtime)
         print "%s (%d identical files, each %d bytes):" \
