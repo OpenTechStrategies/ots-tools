@@ -220,7 +220,10 @@ count them as duplicates."""
             this_file_path = f
         if os.path.islink(this_file_path):
             return # symlinks are not interesting to us; skip them
-        this_file_stat = os.stat(this_file_path)
+        try:
+            this_file_stat = os.stat(this_file_path)
+        except FileNotFoundError:
+            return
         if ignore_empty and this_file_stat.st_size == 0:
             pass
         size_bucket = paths_by_size.get(this_file_stat.st_size, { })
@@ -243,7 +246,34 @@ count them as duplicates."""
             for existing_path in size_bucket.keys():
                 existing_pathinfo = size_bucket[existing_path]
                 if existing_pathinfo is None:
-                    existing_path_stat = os.stat(existing_path)
+                    try:
+                        existing_path_stat = os.stat(existing_path)
+                    except FileNotFoundError:
+                        # Assume this is "No such file or directory",
+                        # which means the existing path disappeared
+                        # out from under us while we were busy doing
+                        # other things.  That's fine: just remove it
+                        # from size_bucket and put this_file_path in
+                        # instead, albeit with no PathInfo() because
+                        # this_file_path is now retroactively the only
+                        # file of this size we've ever encountered.
+                        del size_bucket[existing_path]
+                        size_bucket[this_file_path] = None
+                        if len(size_bucket) != 1:
+                            # If we ever librarize, this will have to
+                            # raise an exception instead.
+                            sys.stderr.write(
+                                "ERROR: internal inconsistency:\n"
+                                + "\n"
+                                + "       Vanished:    '%s'\n" % existing_path
+                                + "       Replacement: '%s'\n" % this_file_path
+                                + "\n"
+                                + "       The replacement should now be the\n"
+                                + "       only file in this size bucket, but\n"
+                                + "       it is not.  This \"can't happen\".\n"
+                                + "\n")
+                            sys.exit(1)
+                        break
                     size_bucket[existing_path] = PathInfo(
                         existing_path_stat.st_ino,
                         existing_path_stat.st_mtime,
@@ -251,11 +281,14 @@ count them as duplicates."""
                         md5_file(existing_path, quicksum=True))
             # Now that we've backfilled the info for the file of this
             # size already seen, fill in the info for the new file too.
-            size_bucket[this_file_path] = PathInfo(
-                this_file_stat.st_ino,
-                this_file_stat.st_mtime,
-                this_file_stat.st_size,
-                md5_file(this_file_path, quicksum=True))
+            # But first check to make sure we didn't hit the OSError
+            # case above and already handle this_file_path there.
+            if not this_file_path in size_bucket:
+                size_bucket[this_file_path] = PathInfo(
+                    this_file_stat.st_ino,
+                    this_file_stat.st_mtime,
+                    this_file_stat.st_size,
+                    md5_file(this_file_path, quicksum=True))
         else:
             # This is the first path found with this size.  Therefore we
             # record this path, but there is as yet no need to create a
