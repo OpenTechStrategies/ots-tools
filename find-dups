@@ -60,9 +60,14 @@ Options:
 Output:
 -------
 
-The output shows each group of duplicate files, arranged in ascending
-chronological order of modification time within each group, in the
-following format:
+The output shows each group of duplicate files with the groups
+arranged in descending order based on total duplicated size per group.
+That is, the group with the greatest amount of duplication as measured
+in total bytes (not number of duplicate files) comes first.  Within a
+group, duplicate files are shown in ascending order of modification
+time, so that the oldest file is listed first.
+
+The format of a group is:
 
   MD5DIGEST (NUMBER identical files, each SIZE bytes):
   (optional other metadata)
@@ -83,6 +88,11 @@ end on the same line with a close parenthesis.
 Here's some example output:
 
   $ find-dups some_tree another_tree
+  68859e26a113e13c9d29ee1925edcbda (3 identical files, each 8514 bytes):
+    2015/09/10 22:18:35 (inode 33034318): some_tree/quuux
+    2015/09/10 22:19:14 (inode 33034323): another_tree/hardlink1
+    2015/09/10 22:19:14 (inode 33034323): another_tree/hardlink2
+
   bea8252ff4e80f41719ea13cdf007273 (2 identical files, each 14 bytes):
   (common parent: some_tree/)
     2015/09/10 19:47:22 (inode 33034320): some_tree/foo
@@ -91,11 +101,6 @@ Here's some example output:
   d41d8cd98f00b204e9800998ecf8427e (2 identical files, each 0 bytes):
     2015/09/03 01:33:57 (inode 33034330): another_tree/qux
     2015/09/03 01:34:04 (inode 33034331): some_tree/fnord/farblundzhet
-  
-  68859e26a113e13c9d29ee1925edcbda (3 identical files, each 8514 bytes):
-    2015/09/10 22:18:35 (inode 33034318): some_tree/quuux
-    2015/09/10 22:19:14 (inode 33034323): another_tree/hardlink1
-    2015/09/10 22:19:14 (inode 33034323): another_tree/hardlink2
 
   $
 
@@ -117,6 +122,7 @@ import sys
 import os
 import hashlib
 import time
+import random
 
 
 class PathInfo:
@@ -407,8 +413,12 @@ def main():
 
     duplicates = gather_dups(roots, ignore_missing, ignored_directories, ignore_empty)
 
-    # Display each bucket, sorted by modtime within a given bucket.
-    for checksum in duplicates.keys():
+    # Display the buckets sorted overall by total duplicated size,
+    # and within a bucket sort by modtime.
+    for checksum in sorted(duplicates, 
+                           key=lambda elt: (
+                               duplicates[elt][random.choice(duplicates[elt].keys())].size_for_display * (len(duplicates[elt]) - 1)),
+                           reverse=True):
         paths = duplicates[checksum].keys()
         size = None
         mtime_sorted_paths = [ ]
