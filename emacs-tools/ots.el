@@ -343,29 +343,36 @@ top, where \"Foo\" is a short-but-recognizeable name for the client."
 
 
 (defun ots-org-headings-to-point ()
-  "Show all the Org Mode headings leading to point."
-  (interactive)
+  "Return all the Org Mode headings leading to point."
   (when (not (eq major-mode 'org-mode))
     (error "ERROR: this only works in Org Mode"))
-  (let ((cur-level 1)
-        (opoint (point))
-        (cur-bound (point-min))
-        (headings ())
-        (heading-name (lambda ()
-                        (beginning-of-line)
-                        (re-search-forward "\\s-+")
-                        (buffer-substring-no-properties
-                         (point) (progn (end-of-line) (point))))))
+  (let ((headings (list (org-heading-components))))
     (save-excursion
       (save-match-data
-        (while (re-search-backward 
-                (format "^\\(\\*\\)\\{%d\\} " cur-level) cur-bound t)
-          (setq cur-bound (match-end 0))
-          (setq headings (cons (funcall heading-name) headings))
-          (setq cur-level (1+ cur-level))
-          (goto-char opoint))))
-    (setq headings (nreverse headings))
-    (display-message-or-buffer (string-join headings "  →  "))))
+        (save-restriction
+          (widen)
+          (while (org-up-heading-safe)
+            (setq headings (cons (org-heading-components) headings)))))
+      headings)))
+
+(defun ots-org-display-headings-to-point ()
+  "Display Org Mode heading titles from level 1 to current subtree.
+Display each title on its own line, indented proportionally to its level."
+  (interactive)
+  (let* ((heading-titles (mapcar (lambda (heading)
+                                   (nth 4 heading))
+                                 (ots-org-headings-to-point)))
+         (level 0)
+         (hierarchy (mapcar (lambda (title)
+                              (prog1
+                                  (if (zerop level)
+                                      (concat "• " title)
+                                    (concat "\n" 
+                                            (make-string (* level 2) ? )
+                                            "→ " title))
+                                (setq level (1+ level))))
+                            heading-titles)))
+    (display-message-or-buffer (string-join hierarchy))))
 
 (defvar ots-default-rate nil
   "*Default rate in US dollars for OTS contracts.  This is
