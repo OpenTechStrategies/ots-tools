@@ -131,7 +131,6 @@ If you're considering binding this to a key, see `oref-do-ref' instead."
       (insert " "))
     (oref-copy-ref-as-kill ref-str)))
 
-
 (defun oref-get-ref-at-point ()
   "Return the ref (a string starting with \"ref:\") at point, else nil.
 If the ref at point is a source ref (i.e., the origin, in square braces),
@@ -157,7 +156,9 @@ then return a cons cell: (REF-STR-WITHOUT-SQUARE-BRACES . 'source)."
           ;; Otherwise, filename match probably did the right thing,
           ;; so just handle the ref in the normal way.
           (string-match "^\\(ref:[a-z0-9]+\\)" ref)
-          (setq ref (match-string 1 ref))))
+          (setq ref (match-string 1 ref)))
+	 (t
+	  (setq ref nil)))
         ;; If it's an origin ref, indicate that.
         (when (and (> ref-start (point-min))
                    (= (char-after (1- ref-start)) ?\[)
