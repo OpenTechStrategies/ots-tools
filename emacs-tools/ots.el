@@ -342,6 +342,30 @@ top, where \"Foo\" is a short-but-recognizeable name for the client."
       (local-set-key "g" 'ots-browse-deliverables))))
 
 
+;; Display the Org Mode header path (Outline path) from top to point.
+;; 
+;; This is a variant of functionality already available in Org Mode.
+;; 
+;; When we wrote this, we didn't know about `org-get-outline-path'
+;; (nor about the related fact that org-eldoc displays in the
+;; minibuffer the outline path for the current heading).  In
+;; https://lists.gnu.org/archive/html/emacs-orgmode/2019-12/threads.html#00033
+;; (thread "[PROPOSAL] New function `org-headings-to-point' and
+;; displayer.")  Adam Porter helpfully pointed these out, and I (Karl)
+;; tried it out.  I found `ots-org-display-headings-to-point'
+;; preferable because it's easier on the eye, at least IMHO.
+;; 
+;; As that thread discusses, the ideal thing to do would be to update
+;; our code to use what Org Mode already provides.  As that thread
+;; also discusses, that is more easily said than done because the
+;; interfaces available right now aren't shaped quite right for the
+;; functionality we want, though Adam goes partway there in his post
+;; https://lists.gnu.org/archive/html/emacs-orgmode/2019-12/msg00073.html
+;; for what it's worth.
+;; 
+;; Anyway, for now we just have these independently-written functions
+;; that sort of, but not quite, duplicate features in Org Mode.
+
 (defun ots-org-headings-to-point ()
   "Return all the Org Mode headings leading to point."
   (when (not (eq major-mode 'org-mode))
@@ -374,6 +398,8 @@ Display each title on its own line, indented proportionally to its level."
                             heading-titles)))
     (display-message-or-buffer (string-join hierarchy))))
 
+
+
 (defvar ots-default-rate nil
   "*Default rate in US dollars for OTS contracts.  This is
   usually set in hours.org or some other place where invoice
