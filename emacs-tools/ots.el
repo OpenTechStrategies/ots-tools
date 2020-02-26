@@ -113,7 +113,7 @@ but with the path portion adjusted as appropriate:
 ;;; Random helpers.
 
 (defun ots-svn-authz-edit ()
-  "Find the OTS SVN authz file (and start in the \"All Leads\" section)."
+  "Find the OTS SVN authz file and put point in a presumably useful place."
   (interactive)
   (find-file
    (concat ots-dir
