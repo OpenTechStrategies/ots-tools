@@ -791,6 +791,8 @@ around point, just return nil."
        ((thing-at-point 'url)
         (setq link (thing-at-point 'url))))
       (when link
+        (when (save-match-data (string-match "^file:" link))
+          (setq link (substring link 5)))
         (kill-new link)
         (message "%s" link)
         link))))
