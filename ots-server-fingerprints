@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+# Print out a list of all OTS servers and their SSH fingerprints.
+
 # This program is in the public domain.  It was written in 2020 by
 # Open Tech Strategies, LLC, and is too small for us to bother to
 # copyright it for formal open source licensing.  Use it as you will.
