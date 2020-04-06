@@ -18,10 +18,7 @@ servers_yaml = os.path.join(os.getenv("OTSDIR"),
 servers = None
 
 with open(servers_yaml, 'r') as input:
-    try:
-        servers = yaml.safe_load(input)
-    except yaml.YAMLError as e:
-        print("ERROR: %s" % e)
+    servers = yaml.safe_load(input)
 
 for server in servers:
     print("Hostname(s):", end="")
