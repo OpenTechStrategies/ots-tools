@@ -174,7 +174,13 @@ the latter are non-destructive: if you have non-OTS stuff in
                 (split-string
                  (shell-command-to-string
                   (format 
-                   (concat "find '%s' -name notes.org -print "
+                   (concat "find '%s' "
+                           "  \\( "
+                           "    -name notes.org "
+                           "    -o "
+                           "    -name proposal-notes.org "
+                           "  \\) "
+                           "  -print "
                            "| grep -v '/personnel/' "
                            "| grep -v '/infra/examples/' "
                            "| xargs grep -l '#+CATEGORY:'")
