@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 #
-# Copyright 2018 Open Tech Strategies
-#
 # Based on https://developers.google.com/sheets/api/quickstart/python
 # and https://gist.github.com/burnash/6771295, mashed together into this
 # ungodly monster, yea verily I, like Frankenstein, am loath to look
@@ -11,6 +9,23 @@
 # https://github.com/gsuitedevs/python-samples/blob/4acb66239db78090eacd1863afbd060a4438462a/sheets/quickstart/quickstart.py#L16-L45),
 # so that's probably the right choice for this script as well.
 #
+# -------------------------------------------------------------------------
+# Copyright (C) 2018 Open Tech Strategies, LLC
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+# -------------------------------------------------------------------------
+# 
 # Get the dependencies:
 #
 # pip install --upgrade google-api-python-client

@@ -3,11 +3,24 @@
 # Grep recursively, with protection against long lines (e.g., JS .min files).
 # If -i flag is given first, then grep case-insensitively.
 # If second argument is given, it is root from which to start recursion.
-
-# Too tiny to copyright under an open source license.  Use as you please.
-
+# 
 # This depends on the 'no-longer-than' utility being in PATH.
 # It is available from the same repository.
+
+# Copyright (C) 2018 Open Tech Strategies, LLC
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 GREP_CMD='grep -rE'
 
