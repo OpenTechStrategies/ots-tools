@@ -28,7 +28,7 @@ Usage:
               --amount=\"dollar amount here (without dollar sign)\"  \\
               --payer-ein=\"your org's ein here\"                    \\
               --payer-address-file=payer_address_file (see below)  \\
-              --output-file=output_pdf_file (use '-' for stdout)   \\
+              --output-file=output_pdf_file                        \\
               blank_1099_form.pdf
 
 The content of payer_address_file is just lines of text, e.g.:
