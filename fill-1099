@@ -24,7 +24,7 @@ Usage:
   ./fill-1099 --payee-name=\"Jane Random\"                           \\
               --payee-street-address=\"street address here\"         \\
               --payee-location=\"city, state, zip, country\"         \\
-              --payee-ssn=\"payee's social security number here\"    \\
+              --payee-tid=\"payee's taxpayer ID (SSN or EIN) here\"  \\
               --amount=\"dollar amount here (without dollar sign)\"  \\
               --payer-ein=\"your org's ein here\"                    \\
               --payer-address-file=payer_address_file (see below)  \\
@@ -109,7 +109,7 @@ def main():
     payee_name = None
     payee_street_address = None
     payee_location = None
-    payee_ssn = None
+    payee_tid = None
     amount = None
     payer_ein = None
     payer_address = None
@@ -123,7 +123,7 @@ def main():
                                        "payee-name=",
                                        "payee-street-address=",
                                        "payee-location=",
-                                       "payee-ssn=",
+                                       "payee-tid=",
                                        "amount=",
                                        "payer-ein=",
                                        "payer-address-file=",
@@ -144,8 +144,8 @@ def main():
             payee_street_address = TextBlock(TextLine(optarg, 61, 550))
         elif opt in ("--payee-location",):
             payee_location = TextBlock(TextLine(optarg, 61, 514))
-        elif opt in ("--payee-ssn",):
-            payee_ssn = TextBlock(TextLine(optarg, 200, 632))
+        elif opt in ("--payee-tid",):
+            payee_tid = TextBlock(TextLine(optarg, 200, 632))
         elif opt in ("--amount",):
             amount = TextBlock(TextLine(optarg, 312, 664))
         elif opt in ("--payer-ein",):
@@ -178,7 +178,7 @@ def main():
     overlay = make_overlay(payee_name, 
                            payee_street_address, 
                            payee_location, 
-                           payee_ssn, 
+                           payee_tid, 
                            amount, 
                            payer_ein,
                            payer_address,)
