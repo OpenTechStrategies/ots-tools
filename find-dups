@@ -57,6 +57,15 @@ Options:
     via path ancestry, under the directory DIRPATH.
     (use multiple times, once for each NAME)
 
+  --inverse
+    Show only files that are unique, i.e., that have no duplicates.
+    This is the expected complement-set option: the files shown
+    with this option, plus the files shown without this option, should
+    always be the full set of files for a given set of root paths.
+    Note, however, that this option only displays file paths.  It
+    doesn't include the size, timestamp, and inode information that is
+    shown when duplicates are being displayed.
+
 Output:
 -------
 
@@ -175,8 +184,8 @@ If there is an IOError opening PATH, return the all-zeros hex digest."""
         #     File "/home/kfogel/bin/find-dups", line 378, in <module>
         #       main()
         #     File "/home/kfogel/bin/find-dups", line 347, in main
-        #       duplicates = gather_dups(roots, ignored_directories, ignore_empty)
-        #     File "/home/kfogel/bin/find-dups", line 212, in gather_dups
+        #       duplicates = gather(roots, ignored_directories, ignore_empty)
+        #     File "/home/kfogel/bin/find-dups", line 212, in gather
         #       md5_file(this_file_path, quicksum=True))
         #     File "/home/kfogel/bin/find-dups", line 138, in md5_file
         #       with open(path) as f:
@@ -185,20 +194,27 @@ If there is an IOError opening PATH, return the all-zeros hex digest."""
         return "0" * 32
 
 
-def gather_dups(roots,
-                ignore_missing=False, 
-                ignored_directories=[], 
-                ignore_empty=False):
-    """Walk the trees in ROOTS; return info about duplicates.
-The return value is a dictionary mapping hex digests (strings)
-to sub-dictionaries, where each sub-dict maps paths (strings)
-to PathInfo objects.
+def gather(roots,
+           inverse=False,
+           ignore_missing=False, 
+           ignored_directories=[], 
+           ignore_empty=False):
+    """Walk the trees in ROOTS; return info about duplicates or singletons.
+
+If INVERSE is false, the return value is a dictionary mapping hex
+digests (strings) to sub-dictionaries, where each sub-dict maps paths
+(strings) to PathInfo objects that represent duplicates.
+
+If INVERSE is true, just return a list of paths.  Yes, this return
+value variance is a bit klugey; patches welcome.
 
 If IGNORED_DIRECTORIES is non-empty, it is a list of names of
 directories not to descend into.
 
 If IGNORE_EMPTY is True, then ignore empty files, that is, do not
-count them as duplicates."""
+include them in the the returned value.
+
+    """
     # Maps sizes-in-bytes (numbers) to sub-dictionaries, where each
     # sub-dict maps paths (strings) to PathInfo objects or to None.
     #
@@ -361,7 +377,19 @@ count them as duplicates."""
         if len(fullsum_bucket.keys()) == 1:
             del paths_by_fullsum[fullsum]
 
-    return paths_by_fullsum
+    if inverse:
+        singletons = { }
+        for size in paths_by_size.keys():
+            for path in paths_by_size[size].keys():
+                singletons[path] = True
+        # At this point, singletons holds all the paths, but some of
+        # them are duplicates.  Filter those out.
+        for fullsum in paths_by_fullsum.keys():
+            for path in paths_by_fullsum[fullsum].keys():
+                del singletons[path]
+        return singletons.keys()
+    else:
+        return paths_by_fullsum
 
 
 def common_path_prefix(lst):
@@ -411,6 +439,7 @@ def main():
     ignore_empty = False
     ignored_directories = []
     ignored_if_containing = []
+    inverse = False
 
     try:
         (opts, args) = getopt.getopt(sys.argv[1:], "h?",
@@ -418,6 +447,7 @@ def main():
                                        "ignore-empty",
                                        "ignore-dir=",
                                        "ignore-contained=",
+                                       "inverse",
                                        "help", 
                                        "usage"
                                      ])
@@ -438,47 +468,53 @@ def main():
             ignored_directories.append(optarg)
         elif opt in ("--ignore-contained"):
             ignored_if_containing.append(optarg)
+        elif opt in ("--inverse"):
+            inverse = True
 
     if len(args) < 1:
         roots = (".",)
     else:
         roots = args
 
-    dups = gather_dups(roots, ignore_missing, ignored_directories, ignore_empty)
+    results = gather(roots, inverse, ignore_missing, ignored_directories, ignore_empty)
 
-    # Display the buckets sorted overall by total duplicated size,
-    # and within a bucket sort by modtime.
-    for checksum in sorted(
-            dups, 
-            key=lambda g: (
-                dups[g][random.choice(dups[g].keys())].size_for_display
-                * (len(dups[g]) - 1)
-            ),
-            reverse=True):
-        paths = dups[checksum].keys()
-        size = None
-        mtime_sorted_paths = [ ]
-
-        # If ignored_if_containing is empty this is a no-op of course.
-        if paths_are_contained(paths, ignored_if_containing):
-            continue
-
-        for path in paths:
-            if size is None:
-                size = dups[checksum][path].size_for_display
-            mtime_sorted_paths.append((path, dups[checksum][path]))
-        mtime_sorted_paths = sorted(mtime_sorted_paths, 
-                                    key=lambda tup: tup[1].mtime)
-        print "%s (%d identical files, each %d bytes):" \
-            % (checksum, len(mtime_sorted_paths), size)
-        common_prefix = common_path_prefix([x[0] for x in mtime_sorted_paths])
-        if common_prefix:
-            print "(common parent: %s)" % common_prefix
-        for tup in mtime_sorted_paths:
-            pretty_time = time.strftime("%Y/%m/%d %H:%M:%S", 
-                                        time.localtime(tup[1].mtime))
-            print "  %s (inode %s): %s" % (pretty_time, tup[1].inode, tup[0])
-        print ""
+    if inverse:
+        for path in results:
+            print("%s" % path)
+    else:
+        # Display the buckets sorted overall by total duplicated size,
+        # and within a bucket sort by modtime.
+        for checksum in sorted(
+                results, 
+                key=lambda g: (
+                    results[g][random.choice(results[g].keys())].size_for_display
+                    * (len(results[g]) - 1)
+                ),
+                reverse=True):
+            paths = results[checksum].keys()
+            size = None
+            mtime_sorted_paths = [ ]
+    
+            # If ignored_if_containing is empty this is a no-op of course.
+            if paths_are_contained(paths, ignored_if_containing):
+                continue
+    
+            for path in paths:
+                if size is None:
+                    size = results[checksum][path].size_for_display
+                mtime_sorted_paths.append((path, results[checksum][path]))
+            mtime_sorted_paths = sorted(mtime_sorted_paths, 
+                                        key=lambda tup: tup[1].mtime)
+            print "%s (%d identical files, each %d bytes):" \
+                % (checksum, len(mtime_sorted_paths), size)
+            common_prefix = common_path_prefix([x[0] for x in mtime_sorted_paths])
+            if common_prefix:
+                print "(common parent: %s)" % common_prefix
+            for tup in mtime_sorted_paths:
+                pretty_time = time.strftime("%Y/%m/%d %H:%M:%S", 
+                                            time.localtime(tup[1].mtime))
+                print "  %s (inode %s): %s" % (pretty_time, tup[1].inode, tup[0])
+            print ""
 
 
 if __name__ == '__main__':
