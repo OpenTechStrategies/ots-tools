@@ -87,7 +87,7 @@ The format of a group is:
     DATE-TIME (inode NUMBER): PATH3 
     ...
 
-  * Duplication ratio: N / M bytes (X.Y%)
+  * Total redundancy: N bytes
 
 There could be an arbitary number of '(optional other metadata)'
 entries, though right now the only kind is "(common parent: foo/)",
@@ -96,12 +96,11 @@ prefix, that is, some *parent directory in common.  Optional metadata
 lines always begin in the leftmost column with an open parenthesis and
 end on the same line with a close parenthesis.
 
-At the end, the ratio of duplicated file storage is displayed in bytes
-and as a percentage.  This shows the amount of file storage space that
-would be saved if one were to keep exactly one of each duplicate file.
-Note that this only counts actual file sizes, not filesystem metadata
-space.  Hardlinks (files with the same inode) are not treated as
-duplicates for size purposes, of course.
+At the end, the total duplicated file size is shown in bytes.  If you
+were to remove all but one copy of every duplicated file, this is the
+total amount number of file bytes you would remove.  This only counts
+actual file sizes, not filesystem metadata.  Hardlinks (files with the
+same inode) are not treated as duplicates for size purposes of course.
 
 Here's some example output:
 
@@ -120,7 +119,7 @@ Here's some example output:
     2015/09/03 01:33:57 (inode 33034330): another_tree/qux
     2015/09/03 01:34:04 (inode 33034331): some_tree/fnord/farblundzhet
 
-  * Duplication ratio: 8528 / 17084 bytes (49.9%)
+  * Total redundancy: 8528 bytes
   $
 
 See also:
@@ -492,7 +491,6 @@ def main():
         for path in results:
             print("%s" % path)
     else:
-        total_size = 0
         total_dup_size = 0
 
         # Display the buckets sorted overall by total duplicated size,
@@ -530,16 +528,12 @@ def main():
                 unique_inodes[tup[1].inode] = size
                 print "  %s (inode %s): %s" % (pretty_time, tup[1].inode, tup[0])
             print ""
-            this_sum = sum(unique_inodes.values())
-            total_size += this_sum
-            total_dup_size += this_sum - size
-        # We could also print out the sizes in human-readable form
-        # with unit suffixes, using the 'humanize' library or inline
+            total_dup_size += sum(unique_inodes.values()) - size
+        # We could also print out the size in human-readable form
+        # with a unit suffix, using the 'humanize' library or inline
         # code.  See https://stackoverflow.com/questions/1094841/\
         # reusable-library-to-get-human-readable-version-of-file-size.
-        print("* Duplication ratio: %d / %d bytes (%.1f%%)"
-              % (total_dup_size, total_size, 
-                 ((float(total_dup_size) / float(total_size)) * float(100))))
+        print("* Total redundancy: %d bytes" % total_dup_size)
 
 if __name__ == '__main__':
   main()
