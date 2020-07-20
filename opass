@@ -63,7 +63,7 @@ to an opass user as listed in a \"USERS\" file at the top of the
 .password-store/ tree.  The format of the USERS file is simple: each
 line is a username, followed by a colon and a space, followed by a
 standard 40-character GPG fingerprint.  You can add new usernames by
-editing ${OTSDIR}/.password-store/USERS directly.  Note that there is
+editing ${PASSWORD_STORE_DIR}/USERS directly.  Note that there is
 no requirement to have a USERS file at all; you can always just use
 key IDs directly.  The USERS file just makes adding, removing, and
 listing keys a little bit more human-friendly.  If you have a USERS
@@ -109,16 +109,14 @@ def password_store_root():
 # assume the other maps Y->X and does *not* map X->anything.
 users_to_fprints = { }
 fprints_to_users = { }
-# OTSDIR really should be set for anyone at OTS, but there's no reason
-# for this script to break if it's not set, so let's be flexible.
-if os.environ.get("OTSDIR") is not None:
-    ufile = os.path.join(os.environ.get("OTSDIR"), ".password-store", "USERS")
-    with open(ufile) as f:
-        for line in f:
-            username, fingerprint = line.split(":")
-            fingerprint = fingerprint.strip()
-            users_to_fprints[username] = fingerprint
-            fprints_to_users[fingerprint] = username
+
+ufile = os.path.join(password_store_root(),"USERS")
+with open(ufile) as f:
+    for line in f:
+        username, fingerprint = line.split(":")
+        fingerprint = fingerprint.strip()
+        users_to_fprints[username] = fingerprint
+        fprints_to_users[fingerprint] = username
 
 def canonicalize_as_directory(path):
     """Canonicalize PATH as a directory path within the password store.
@@ -449,7 +447,7 @@ def main():
                 print("  - %s%s"
                       % (key, inline_username(fprints_to_users.get(key))))
         else:
-            print("All keys registered in ${OTSDIR}/.password-store/USERS:")
+            print("All keys registered in ${PASSWORD_STORE_DIR}/USERS:")
             for key, val in users_to_fprints.items():
                 print("  - %s (%s)" % (val, key))
     elif cmd == "get" or cmd == "fetch" or cmd == "show":
