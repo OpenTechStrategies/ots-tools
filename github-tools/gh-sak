@@ -58,6 +58,10 @@ Available COMMANDs
    parameter to the --root option is not required (indeed, must be
    left off).
 
+* ticket-plain TICKET_NUMBER
+
+  Emit plain text showing the basics of issue or pull request TICKET_NUMBER.
+
 * ticket-json TICKET_NUMBER
 
   Emit JSON showing the basics of issue or pull request TICKET_NUMBER.
@@ -305,7 +309,7 @@ def main():
                 wait_counter = 0
                 time.sleep(2.5)
 
-    elif command == "ticket-json":
+    elif command.startswith("ticket-"):
         ticket_number = second_arg
         if ticket_number is None:
             sys.stderr.write("ERROR: missing TICKET_NUMBER argument\n")
@@ -318,13 +322,25 @@ def main():
         except:
             ticket = repos.get_pull(ticket_number)
 
-        # The native 'issue' and 'pull' classes aren't serializable,
-        # so just put the parts we want into a dict for JSON encoding.
-        ticket = { "number": ticket.number,
-                  "title": ticket.title,
-                  "state": ticket.state,
-                  "body": ticket.body }
-        print("%s" % json.JSONEncoder().encode(ticket))
+        if command[command.find("-") + 1:] == "plain":
+            print("#%d (%s): %s" % (ticket.number, ticket.state, ticket.title))
+            print("{{{")
+            # We don't quote "{{{" nor "}}}" in the ticket.body, since
+            # we're surrounding the body with them simply as a visual
+            # aid for humans.  Formally, a parser could verify the
+            # presence of the initial "{{{", and of the "}}}" right
+            # before EOF, if it wanted to.  The existence of similar
+            # sequences inside the body wouldn't interfere with that.
+            print("%s" % ticket.body)
+            print("}}}")
+        elif command[command.find("-") + 1:] == "json":
+            # The native 'issue' and 'pull' classes aren't serializable,
+            # so just put the parts we want into a dict for JSON encoding.
+            ticket = { "number": ticket.number,
+                       "title": ticket.title,
+                       "state": ticket.state,
+                       "body": ticket.body }
+            print("%s" % json.JSONEncoder().encode(ticket))
 
     elif command == "issues-summary-org":
         # TextWrapper appears to be buggy; at least, this wrapper
