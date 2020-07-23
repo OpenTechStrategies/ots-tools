@@ -310,6 +310,7 @@ def main():
                 time.sleep(2.5)
 
     elif command.startswith("ticket-"):
+        kind = None
         ticket_number = second_arg
         if ticket_number is None:
             sys.stderr.write("ERROR: missing TICKET_NUMBER argument\n")
@@ -319,15 +320,28 @@ def main():
 
         try:
             ticket = repos.get_issue(ticket_number)
+            if ticket.pull_request is not None:
+                kind = "PR"
+            else:
+                kind = "Issue"
         except github.UnknownObjectException:
+            # This entire exception handler section is most likely
+            # unnecessary, since repos.get_issue() returns pull
+            # requests too.  The question of whether a pull request
+            # "is" an issue or not is an ancient and deep question,
+            # upon the rocks of which many a careful philosopher has
+            # foundered.  We will steer our ship clear of such dangers
+            # and just handle whatever the heck the API throws at us.
             try:
                 ticket = repos.get_pull(ticket_number)
+                kind = "PR"
             except github.UnknownObjectException:
                 sys.stderr.write("ERROR: no such ticket %d\n" % ticket_number)
                 sys.exit(1)
 
         if command[command.find("-") + 1:] == "plain":
-            print("#%d (%s): %s" % (ticket.number, ticket.state, ticket.title))
+            print("%s #%d (%s): %s" 
+                  % (kind, ticket.number, ticket.state, ticket.title))
             print("{{{")
             # We don't quote "{{{" nor "}}}" in the ticket.body, since
             # we're surrounding the body with them simply as a visual
@@ -340,7 +354,8 @@ def main():
         elif command[command.find("-") + 1:] == "json":
             # The native 'issue' and 'pull' classes aren't serializable,
             # so just put the parts we want into a dict for JSON encoding.
-            ticket = { "number": ticket.number,
+            ticket = { "kind": kind.lower(),
+                       "number": ticket.number,
                        "title": ticket.title,
                        "state": ticket.state,
                        "body": ticket.body }
