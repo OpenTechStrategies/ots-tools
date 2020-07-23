@@ -24,7 +24,7 @@
 __doc__ = """\
 Manipulate issues associated with a GitHub repository.  Usage:
 
-  $ ./gh-sak --root OWNER[/REPOS] [ --infile INPUT_FILE ] COMMAND
+  $ ./gh-sak --root OWNER[/REPOS] [ --infile INPUT_FILE ] COMMAND [ARGS...]
 
 OWNER/REPOS is something like "opentechstrategies/ots-tools".
 
@@ -57,6 +57,10 @@ Available COMMANDs
    This is the only command for which the /REPOSITORY component of the
    parameter to the --root option is not required (indeed, must be
    left off).
+
+* ticket-json TICKET_NUMBER
+
+  Emit JSON showing the basics of issue or pull request TICKET_NUMBER.
 
 * "issues-summary-org"  OR  "pull-requests-summary-org"  (no input file)
 
@@ -185,6 +189,7 @@ def main():
     repos_name = None
     infile = None
     auth_token = None
+    second_arg = None
 
     try:
         (opts, args) = getopt.getopt(
@@ -218,12 +223,14 @@ def main():
             else:
                 infile = open(optarg, "r")
         
-    if len(args) == 1:
-        command = args[0]
-    elif len(args) < 1:
+    if len(args) < 1:
         sys.stderr.write("ERROR: "
                          "command required (run with --help to see usage)\n")
         sys.exit(1)
+    elif len(args) <= 2:
+        command = args[0]
+        if len(args) == 2:
+            second_arg = args[1]
     else:
         sys.stderr.write("ERROR: "
                          "too many commands (run with --help to see usage)\n")
@@ -297,6 +304,27 @@ def main():
             if wait_counter >= 50:
                 wait_counter = 0
                 time.sleep(2.5)
+
+    elif command == "ticket-json":
+        ticket_number = second_arg
+        if ticket_number is None:
+            sys.stderr.write("ERROR: missing TICKET_NUMBER argument\n")
+            sys.exit(1)
+        else:
+            ticket_number = int(ticket_number)
+
+        try:
+            ticket = repos.get_issue(ticket_number)
+        except:
+            ticket = repos.get_pull(ticket_number)
+
+        # The native 'issue' and 'pull' classes aren't serializable,
+        # so just put the parts we want into a dict for JSON encoding.
+        ticket = { "number": ticket.number,
+                  "title": ticket.title,
+                  "state": ticket.state,
+                  "body": ticket.body }
+        print("%s" % json.JSONEncoder().encode(ticket))
 
     elif command == "issues-summary-org":
         # TextWrapper appears to be buggy; at least, this wrapper
