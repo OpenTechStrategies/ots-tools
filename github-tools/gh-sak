@@ -319,8 +319,12 @@ def main():
 
         try:
             ticket = repos.get_issue(ticket_number)
-        except:
-            ticket = repos.get_pull(ticket_number)
+        except github.UnknownObjectException:
+            try:
+                ticket = repos.get_pull(ticket_number)
+            except github.UnknownObjectException:
+                sys.stderr.write("ERROR: no such ticket %d\n" % ticket_number)
+                sys.exit(1)
 
         if command[command.find("-") + 1:] == "plain":
             print("#%d (%s): %s" % (ticket.number, ticket.state, ticket.title))
