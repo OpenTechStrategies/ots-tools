@@ -58,11 +58,11 @@ Available COMMANDs
    parameter to the --root option is not required (indeed, must be
    left off).
 
-* ticket-plain TICKET_NUMBER
+* "ticket-plain TICKET_NUMBER"
 
   Emit plain text showing the basics of issue or pull request TICKET_NUMBER.
 
-* ticket-json TICKET_NUMBER
+* "ticket-json TICKET_NUMBER"
 
   Emit JSON showing the basics of issue or pull request TICKET_NUMBER.
 
