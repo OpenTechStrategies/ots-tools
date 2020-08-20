@@ -339,6 +339,10 @@ def main():
                 sys.stderr.write("ERROR: no such ticket %d\n" % ticket_number)
                 sys.exit(1)
 
+        label_names = []
+        for label in ticket.labels:
+            label_names.append(label.name)
+
         if command[command.find("-") + 1:] == "plain":
             print("%s #%d (%s): %s" 
                   % (kind, ticket.number, ticket.state, ticket.title))
@@ -351,6 +355,13 @@ def main():
             # sequences inside the body wouldn't interfere with that.
             print("%s" % ticket.body)
             print("}}}")
+            if len(label_names) > 0:
+                print("")
+                print("Labels:", end="")
+                for label_name in label_names:
+                    print(" \"%s\"" % label_name, end="")
+                print("")
+                print("")
         elif command[command.find("-") + 1:] == "json":
             # The native 'issue' and 'pull' classes aren't serializable,
             # so just put the parts we want into a dict for JSON encoding.
@@ -358,6 +369,7 @@ def main():
                        "number": ticket.number,
                        "title": ticket.title,
                        "state": ticket.state,
+                       "labels": label_names,
                        "body": ticket.body }
             print("%s" % json.JSONEncoder().encode(ticket))
 
