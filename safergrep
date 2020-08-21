@@ -22,10 +22,10 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-GREP_CMD='grep -rE'
+GREP_CMD='grep -rE --'
 
 if [ "${1}X" = "-iX" ]; then
-    GREP_CMD='grep -i -rE'
+    GREP_CMD='grep -i -rE --'
     shift
 fi
 
