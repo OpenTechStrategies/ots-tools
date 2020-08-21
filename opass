@@ -113,10 +113,12 @@ fprints_to_users = { }
 ufile = os.path.join(password_store_root(),"USERS")
 with open(ufile) as f:
     for line in f:
-        username, fingerprint = line.split(":")
-        fingerprint = fingerprint.strip()
-        users_to_fprints[username] = fingerprint
-        fprints_to_users[fingerprint] = username
+        line = line.strip()
+        if line:
+            username, fingerprint = line.split(":")
+            fingerprint = fingerprint.strip()
+            users_to_fprints[username] = fingerprint
+            fprints_to_users[fingerprint] = username
 
 def canonicalize_as_directory(path):
     """Canonicalize PATH as a directory path within the password store.
