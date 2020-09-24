@@ -55,15 +55,15 @@
 (require 'org-agenda)
 
 (defvar ots-dir (file-name-as-directory
-                  (or (getenv "OTSDIR") (expand-file-name "~/OTS")))
+                  (or (getenv "OTS_DIR") (expand-file-name "~/OTS")))
   "*Root of the OTS working copy tree.  This always ends with a slash.
 
-This will be derived from the environment variable \"OTSDIR\" if
+This will be derived from the environment variable \"OTS_DIR\" if
 it exists, otherwise it will be set to a default value that is
 unlikely to be correct for you.
 
 You can ensure this variable has the correct value by either
-defining \"OTSDIR\" in the environment Emacs runs in, or by
+defining \"OTS_DIR\" in the environment Emacs runs in, or by
 setting this variable directly in your .emacs, like the following
 but with the path portion adjusted as appropriate:
 

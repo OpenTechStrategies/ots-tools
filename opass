@@ -32,9 +32,9 @@ and it has some OTS idiosyncracies.  Our corporate tree is kept in
 Subversion, so opass uses git-svn as a bridge, since 'opass' is based
 on 'pass' (https://www.passwordstore.org/), which uses Git.  Thus
 'opass' requires https://github.com/opentechstrategies/pass-git-svn to
-be installed.  You will also see some references to \"OTSDIR\", an
+be installed.  You will also see some references to \"OTS_DIR\", an
 environment variable that points to the root of the user's local SVN
-checked-out tree.  'opass' should still work without OTSDIR, but note
+checked-out tree.  'opass' should still work without OTS_DIR, but note
 that we don't test that very often.
 
 If you have any questions, ask at https://chat.opentechstrategies.com/.

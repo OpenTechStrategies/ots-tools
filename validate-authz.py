@@ -80,14 +80,14 @@ if __name__ == "__main__":
     try:
         authz_dir, authz_fname = os.path.split(sys.argv[1])
     except IndexError:
-        authz_dir = os.path.join(os.environ['OTSDIR'],
+        authz_dir = os.path.join(os.environ['OTS_DIR'],
                                  "infra/svn-server/srv/svn/repositories/auth")
         authz_fname = "ots-authz-file"
 
     try:
         repo_dir = sys.argv[2]
     except IndexError:
-        repo_dir = os.environ['OTSDIR']
+        repo_dir = os.environ['OTS_DIR']
         
     with cd(authz_dir):
         dirs_must_exist(authz_fname, repo_dir)

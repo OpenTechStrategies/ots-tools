@@ -21,7 +21,7 @@ import os
 import yaml   # Might need to do 'pip install pyyaml' first
 import subprocess
 
-servers_yaml = os.path.join(os.getenv("OTSDIR"), 
+servers_yaml = os.path.join(os.getenv("OTS_DIR"), 
                             "infra", 
                             "server-inventory.yaml")
 
