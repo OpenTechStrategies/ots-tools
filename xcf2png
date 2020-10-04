@@ -1,5 +1,10 @@
 #!/bin/sh
 
+# Pass an .xcf file as a parameter, and this script will make a .png
+# in the same dir as the .xcf.  Omit the parameter, and it defaults to
+# *.xcf
+
+
 [ -z "$1" ] && set -- "*.xcf"
 
 gimp -n -i -b - <<EOF
