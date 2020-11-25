@@ -140,7 +140,6 @@ import sys
 import os
 import hashlib
 import time
-import random
 
 
 class PathInfo:
@@ -500,12 +499,12 @@ def main():
         for checksum in sorted(
                 results, 
                 key=lambda g: (
-                    results[g][random.choice(tuple(results[g].keys()))].size_for_display
+                    results[g][next(iter(results[g]))].size_for_display
                     * (len(results[g]) - 1)
                 ),
                 reverse=True):
             paths = tuple(results[checksum].keys())
-            size = None
+            size = results[checksum][paths[0]].size_for_display
             mtime_sorted_paths = [ ]
     
             # If ignored_if_containing is empty this is a no-op of course.
@@ -513,8 +512,6 @@ def main():
                 continue
     
             for path in paths:
-                if size is None:
-                    size = results[checksum][path].size_for_display
                 mtime_sorted_paths.append((path, results[checksum][path]))
             mtime_sorted_paths = sorted(mtime_sorted_paths, 
                                         key=lambda tup: tup[1].mtime)
