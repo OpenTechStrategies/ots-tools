@@ -269,7 +269,7 @@ include them in the the returned value.
             # value.  A loop with a conditional inside it is just a
             # cheap way to take care of that first case.  However, it
             # might be good to put a sanity-check assertion anyway.
-            for existing_path in size_bucket.keys():
+            for existing_path in tuple(size_bucket.keys()):
                 existing_pathinfo = size_bucket[existing_path]
                 if existing_pathinfo is None:
                     try:
@@ -382,7 +382,7 @@ include them in the the returned value.
     # Eliminate every fullsum group that has only one member.  Since the
     # buckets are organized by full checksum this time, any buckets that
     # remain afterwards represent true duplicates.
-    for fullsum in paths_by_fullsum.keys():
+    for fullsum in tuple(paths_by_fullsum.keys()):
         fullsum_bucket = paths_by_fullsum[fullsum]
         if len(fullsum_bucket.keys()) == 1:
             del paths_by_fullsum[fullsum]
