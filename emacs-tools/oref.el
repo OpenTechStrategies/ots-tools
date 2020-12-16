@@ -278,9 +278,13 @@ If you're considering binding this to a key, see `oref-do-ref' instead."
     (sit-for 2)
     (call-interactively 'oref-ref-files-rebuild-cache)))
 
-(defun oref-do-ref ()
+(defun oref-do-ref (&optional just-copy)
   "If point is in a citation ref, go to its source, else set a new ref
 (unless point is in a source ref, in which case put the ref in the kill ring).
+
+If prefix arg JUST-COPY is non-nil, then unconditionally copy the
+ref around point to the kill ring (whether it is a source ref or
+not), else error if point is not in a ref.
 
 This function is the recommended entry point to the oref system.  If
 you're going to bind something to a key, it should probably be this,
@@ -352,17 +356,23 @@ somewhere, just put point anywhere inside the origin ref (i.e.,
 inside the square braces around \"[ref:34992c31]\") and run
 `\\[oref-do-ref]'.  This will add the ref to both the kill ring 
 and the search ring."
-  (interactive)
-  (let ((ref (oref-get-ref-at-point)))
+  (interactive "P")
+  (let ((ref (oref-get-ref-at-point))
+        (grab-ref
+         (lambda (refnam)
+           (oref-copy-ref-as-kill refnam)
+           (isearch-update-ring refnam)
+           (message "Copied \"%s\" to clipboard and to search ring." refnam))))
     (if ref
         (if (consp ref)
             (if (eq (cdr ref) 'source)
-                (progn
-                  (oref-copy-ref-as-kill (car ref))
-                  (isearch-update-ring (car ref))
-                  (message "Copied \"%s\" to clipboard and to search ring." (car ref)))
+                (funcall grab-ref (car ref))
               (error (concat
                       (format "Unrecognized ref format: \"%S\".  " ref)
                       "Are you from the future?")))
-          (oref-find-ref ref))
-      (oref-set-ref))))
+          (if just-copy
+              (funcall grab-ref ref)
+            (oref-find-ref ref)))
+      (if just-copy
+          (error "Point is not in a ref.")
+        (oref-set-ref)))))
