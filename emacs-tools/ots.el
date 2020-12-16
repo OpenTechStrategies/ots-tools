@@ -98,6 +98,7 @@ but with the path portion adjusted as appropriate:
 (define-global-abbrev "osivv" "OS~IV\\&V")
 (define-global-abbrev "checkbooknyc" "Checkbook~NYC")
 (define-global-abbrev "cbnyc" "Checkbook~NYC") ; even easier to type
+(define-global-abbrev "vrc" "\\VAR{client}")
 
 ;; I wish that `define-global-abbrev' took a flag to say "No need to
 ;; ask about saving this abbrev to ~/.emacs.d/abbrev_defs, since, you
