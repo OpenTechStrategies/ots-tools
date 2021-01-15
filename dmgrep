@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 # Copyright (c) 2015, 2018 Karl Fogel
@@ -192,7 +192,7 @@ def main():
                                   "summary",
                                   "inverse",
                                   "delimiter="])
-  except getopt.GetoptError, err:
+  except getopt.GetoptError as err:
     sys.stderr.write(str(err))
     sys.stderr.write("\n")
     sys.exit(1)
@@ -201,20 +201,20 @@ def main():
     if opt in ("-d", "--delimiter"):
       delim_re = re.compile(optarg)
     elif opt in ("-h", "-?", "--help", "--usage"):
-      print __doc__;
+      print(__doc__);
       sys.exit(0)
     elif opt == "--summary":
-      print "dmgrep [-d|--delimiter DELIM_REGEXP] [-i|--ignore-case] " \
-            "REGEXP < INPUT"
-      print ""
-      print "(Run 'dmgrep --usage' for full usage.)"
+      print("dmgrep [-d|--delimiter DELIM_REGEXP] [-i|--ignore-case] " \
+            "REGEXP < INPUT")
+      print("")
+      print("(Run 'dmgrep --usage' for full usage.)")
       sys.exit(0)
     elif opt in ("-i", "--ignore-case"):
       search_flags |= re.IGNORECASE
     elif opt in ("-v", "--inverse"):
       inverse = True
     else:
-      print "Unrecognized option '%s'" % opt
+      print("Unrecognized option '%s'" % opt)
       sys.exit(1)
 
   if len(args) < 1:
