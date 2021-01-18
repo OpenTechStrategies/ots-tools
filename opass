@@ -278,14 +278,19 @@ def main():
             sys.stderr.write("\n")
             sys.stderr.write("If the above error is about the password store " 
                              "not being a git-svn\n")
-            sys.stderr.write("repository, or about git-svn not being in "
-                             "the password store, then\n"
-                             "run this from your home directory:\n")
+            sys.stderr.write("repository, then run this from your home directory:\n")
             sys.stderr.write("\n")
             sys.stderr.write("  $ pass git-svn clone \\\n"
                              "    https://svn.opentechstrategies.com"
                              "/repos/ots/trunk/.password-store\n")
             sys.stderr.write("\n")
+            sys.stderr.write("If the error is that " 
+                             "git-svn is not in the password store, then\n")
+            sys.stderr.write("you need to install the 'pass-git-svn' extension to 'pass':\n")
+            sys.stderr.write("\n")
+            sys.stderr.write("  https://github.com/opentechstrategies/pass-git-svn\n")
+            sys.stderr.write("\n")
+            sys.exit(1)
 
     def do_pass_thing(things, sync=False, content=None):
         """THINGS is an argument tuple to 'pass', starting with subcommand.
