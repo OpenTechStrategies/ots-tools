@@ -1,0 +1,131 @@
+#!/bin/sh
+
+# Fetch the OTS bigdata directory that corresponds to the current
+# directory and put it in a subdirectory named './bigdata/'.
+#
+# This works for both SVN and git-svn.  In the SVN case, it ensures
+# that the subdirectory is included in the svn:ignore property for the
+# current directory (i.e., adding to svn:ignore if necessary).
+# 
+# An example:
+# 
+# If you're in ${OTS_DIR}/clients/foo/bar/, which corresponds to
+# https://svn.opentechstrategies.com/repos/ots/trunk/clients/foo/bar/,
+# then this checks out a subdirectory 'bigdata' that corresponds to
+# https://svn.opentechstrategies.com/repos/bigdata/trunk/clients/foo/bar/
+# (plus, if appropriate, an svn:ignore property will be set or
+# adjusted here so that the new subdirectory 'bigdata' is ignored).
+# 
+# Alternative behaviors considered: Could have tried doing something
+# fancy involving svn:externals, but would that really buy us much?
+# (http://svnbook.red-bean.com/nightly/en/svn.advanced.externals.html
+# has more about svn:externals.)
+
+if svn info > /dev/null 2>&1 ; then
+  TYPE="svn"
+elif git svn info > /dev/null 2>&1 ; then
+  TYPE="git-svn"
+else
+  echo "This is neither an SVN nor a git-svn working copy." >&2
+  exit 1
+fi
+
+if [ ${TYPE} = "svn" ]; then
+  MAIN_URL=`svn info . | grep "^URL: " | cut -b 6-`
+elif [ ${TYPE} = "git-svn" ]; then
+  MAIN_URL=`git svn info . | grep "^URL: " | cut -b 6-`
+else
+  echo "Can't happen.  You should never see this message." >&2
+  exit 1
+fi
+
+BIGDATA_URL=`echo -n ${MAIN_URL} | sed -e 's~/repos/ots/~/repos/bigdata/~'`
+
+if ! svn ls ${BIGDATA_URL} > /dev/null 2>/dev/null; then
+  echo -n "ERROR: The OTS bigdata repository has no directory "  >&2
+  echo           "for this location."                            >&2
+  echo "       You can use this command to create it:"           >&2
+  echo ""                                                        >&2
+  echo "         svn mkdir --parents ${BIGDATA_URL}"             >&2
+  echo ""                                                        >&2
+  exit 1
+fi
+
+if [ ${TYPE} = "svn" ]; then
+  # With SVN, you get a choice of checkout or export.  (With git-svn,
+  # it'll always be clone, which is essentially checkout.)
+  SUBCOMMAND=still_unset
+  # These first few clauses are just so that this script can be used
+  # entirely in batch mode in the SVN case.
+  if [ "${1}" = "-u" ]; then
+    SUBCOMMAND=url  # special case -- this is not a real SVN subcommand
+  elif [ "${1}" = "-c" ]; then
+    SUBCOMMAND=checkout
+  elif [ "${1}" = "-e" ]; then
+    SUBCOMMAND=export
+  else
+    echo ""
+    echo "Would you to get a (u)rl, or do a (c)heckout, or do an (e)xport?"
+    echo ""
+    echo "* (u)rl just prints the URL to the appropriate bigdata directory,"
+    echo "  and then you can then do any command you want with that URL."
+    echo ""
+    echo "* (c)heckout gives you a fully versioned 'bigdata/' subdirectory."
+    echo "  The advantage of this option is that it allows you to commit"
+    echo "  changes and do other version control operations on the data."
+    echo "  The disadvantage is that it takes up twice as much space as an"
+    echo "  export, because Subversion keeps a clean copy of each versioned"
+    echo "  file, hidden in the 'bigdata/.svn/' administrative subdirectory."
+    echo ""
+    echo "* (e)xport gives you a 'bigdata/' subdirectory containing just the"
+    echo "  data files.  The advantage is that it takes up half the space of"
+    echo "  a checkout.  The disadvantage is that the files won't be under"
+    echo "  version control locally, so you wouldn't be able to commit changes,"
+    echo "  or, say, do an 'svn revert' if you accidentally modify something."
+    echo ""
+    echo -n "Type a letter for (u)rl, (c)heckout, or (e)xport: "
+    read SUBCOMMAND_CODE
+    if [ "${SUBCOMMAND_CODE}" = "u" -o "${SUBCOMMAND_CODE}" = "U" ]; then
+      SUBCOMMAND=url  # special case -- this is not a real SVN subcommand
+    elif [ "${SUBCOMMAND_CODE}" = "c" -o "${SUBCOMMAND_CODE}" = "C" ]; then
+      SUBCOMMAND=checkout
+    elif [ "${SUBCOMMAND_CODE}" = "e" -o "${SUBCOMMAND_CODE}" = "E" ]; then
+      SUBCOMMAND=export
+    else
+      echo "ERROR: you must type 'u', 'c' or 'e'" >&2
+      exit 1 
+    fi
+  fi
+fi
+
+if [ "${SUBCOMMAND}" = "url" ]; then
+  echo "${BIGDATA_URL}"
+  exit 0
+fi
+
+if [ ${TYPE} = "svn" ]; then
+  # Set the property first.  That way if this is going to be a long
+  # checkout (which it probably is, given that this is bigdata) then
+  # any SVN operations the user does in their main tree will already
+  # have the property in place.
+  if svn propget -q svn:ignore . 2>/dev/null; then
+    svn propget --no-newline svn:ignore > tmp-get-bigdata-$$
+    if ! grep -q -E "^bigdata$" tmp-get-bigdata-$$; then
+      echo "bigdata" >> tmp-get-bigdata-$$
+      svn propset -q -F tmp-get-bigdata-$$ svn:ignore .
+    fi
+    rm tmp-get-bigdata-$$
+  else
+    svn propset -q svn:ignore "bigdata" .
+  fi
+fi
+
+# Now we can start the checkout.
+if [ ${TYPE} = "svn" ]; then
+  svn ${SUBCOMMAND} ${BIGDATA_URL} ./bigdata
+elif [ ${TYPE} = "git-svn" ]; then
+  git svn clone ${BIGDATA_URL} ./bigdata
+else
+  echo "Can't happen.  If you got this message, weep." >&2
+  exit 1
+fi
