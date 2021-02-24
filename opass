@@ -102,6 +102,25 @@ def password_store_root():
     else:
         return os.path.expanduser("~/.password-store")
 
+setup_message = """
+If you got an error about the password store not being a git-svn
+repository, or about being unable to open ~/.password-store/USERS,
+then you need to initialize your ~/.password-store directory:
+
+  $ cd ${HOME}
+  $ mkdir .password-store
+  $ cd .password-store
+  $ pass git-svn clone \\
+      https://svn.opentechstrategies.com/repos/ots/trunk/.password-store
+  ## (Note that this step will take a while.) ##
+  $ cd ..
+
+If you got an error about how git-svn is not in the password store,
+then you need to install the 'pass-git-svn' extension to 'pass':
+
+  https://github.com/opentechstrategies/pass-git-svn
+"""
+
 # One dictionary maps usernames to long-form GPG fingerprints, the
 # other does the reverse.  Note that at certain places in the code
 # we assume that there is no username that is also someone's long-form
@@ -110,15 +129,29 @@ def password_store_root():
 users_to_fprints = { }
 fprints_to_users = { }
 
-ufile = os.path.join(password_store_root(),"USERS")
-with open(ufile) as f:
-    for line in f:
-        line = line.strip()
-        if line:
-            username, fingerprint = line.split(":")
-            fingerprint = fingerprint.strip()
-            users_to_fprints[username] = fingerprint
-            fprints_to_users[fingerprint] = username
+def set_up_usermap():
+    """Set up the globals 'users_to_fprints' and 'fprints_to_users'."""
+    global users_to_fprints
+    global fprints_to_users
+    ufile = os.path.join(password_store_root(),"USERS")
+    try:
+        with open(ufile) as f:
+            for line in f:
+                line = line.strip()
+                if line:
+                    username, fingerprint = line.split(":")
+                    fingerprint = fingerprint.strip()
+                    users_to_fprints[username] = fingerprint
+                    fprints_to_users[fingerprint] = username
+    except FileNotFoundError as err:
+        global setup_message
+        sys.stderr.write("ERROR: unable to open '%s'\n" % ufile)
+        sys.stderr.write(setup_message)
+        sys.exit(1)
+    except Exception as err:
+        sys.stderr.write("ERROR: something unexpected went wrong:\n")
+        sys.stderr.write("       '%s'\n" % err)
+        sys.exit(1)
 
 def canonicalize_as_directory(path):
     """Canonicalize PATH as a directory path within the password store.
@@ -238,6 +271,8 @@ def main():
         if opt in ("-o", "--offline",):
             online_p = False
 
+    set_up_usermap()
+
     if len(args) == 0:
         cmd = "list"
     elif len(args) == 1:
@@ -275,21 +310,8 @@ def main():
             subprocess.run([pass_pgm, 'git-svn', thing,], stdout=sys.stderr,
                            shell=False, encoding="UTF-8", check=True)
         except subprocess.CalledProcessError:
-            sys.stderr.write("\n")
-            sys.stderr.write("If the above error is about the password store " 
-                             "not being a git-svn\n")
-            sys.stderr.write("repository, then run this from your home directory:\n")
-            sys.stderr.write("\n")
-            sys.stderr.write("  $ pass git-svn clone \\\n"
-                             "    https://svn.opentechstrategies.com"
-                             "/repos/ots/trunk/.password-store\n")
-            sys.stderr.write("\n")
-            sys.stderr.write("If the error is that " 
-                             "git-svn is not in the password store, then\n")
-            sys.stderr.write("you need to install the 'pass-git-svn' extension to 'pass':\n")
-            sys.stderr.write("\n")
-            sys.stderr.write("  https://github.com/opentechstrategies/pass-git-svn\n")
-            sys.stderr.write("\n")
+            global setup_message
+            sys.stderr.write(setup_message)
             sys.exit(1)
 
     def do_pass_thing(things, sync=False, content=None):
