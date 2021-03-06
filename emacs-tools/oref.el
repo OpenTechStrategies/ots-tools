@@ -5,22 +5,28 @@
 ;; "Installation" below for how to install this package into Emacs.
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; 
+<<<<<<< HEAD
+;;
 ;; Copyright (c) 2016, 2018, 2019, 2020 Open Tech Strategies, LLC
-;; 
+;;
+=======
+;;
+;; Copyright (c) 2016, 2017, 2018 Open Tech Strategies, LLC
+;;
+>>>>>>> ab72bd2 (Whitespace)
 ;; This program is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
 ;; the Free Software Foundation, either version 3 of the License, or
 ;; (at your option) any later version.
-;; 
+;;
 ;; This program is distributed in the hope that it will be useful, but
 ;; WITHOUT ANY WARRANTY; without even the implied warranty of
 ;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 ;; General Public License for more details.
-;; 
+;;
 ;; If you did not receive a copy of the GNU General Public License
 ;; along with this program, see <http://www.gnu.org/licenses/>.
-;; 
+;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
@@ -57,7 +63,7 @@
   "Return a uuid of length LENGTH (defaults to 32 and capped at 32).
 This function makes no guarantees about uniqueness, but tries its best."
   (substring
-   (md5 (concat 
+   (md5 (concat
          (format "%d" (point))
          (format "%d" (emacs-pid))
          (system-name)
@@ -79,7 +85,7 @@ This function makes no guarantees about uniqueness, but tries its best."
   "Copy REF to the kill ring with a specialized yank handler.
 The yank handler causes REF to be yanked in fancy mode-specific ways.
 This function modifies the text properties of REF."
-  (let ((citation-yank-fn 
+  (let ((citation-yank-fn
          ;; As we handle more special cases, we may want to pull
          ;; this anonymous lambda out into its own named function.
          (lambda (citation-str)
@@ -109,7 +115,7 @@ This function modifies the text properties of REF."
             (t
              (insert citation-str))))))
     (set-text-properties 0 (length ref)
-                         (list 'yank-handler (list citation-yank-fn)) 
+                         (list 'yank-handler (list citation-yank-fn))
                          ref))
   (kill-new ref))
 
@@ -125,7 +131,7 @@ If you're considering binding this to a key, see `oref-do-ref' instead."
   (interactive)
   (let ((ref-str (format "ref:%s" (oref-make-uuid 8))))
     (insert "[" ref-str "]")
-    (when (and 
+    (when (and
            (looking-at "\\S-")
            (not (looking-at ":")))
       (insert " "))
@@ -354,7 +360,7 @@ jump behavior.
 To grab a reference again so you can paste it as a new citation
 somewhere, just put point anywhere inside the origin ref (i.e.,
 inside the square braces around \"[ref:34992c31]\") and run
-`\\[oref-do-ref]'.  This will add the ref to both the kill ring 
+`\\[oref-do-ref]'.  This will add the ref to both the kill ring
 and the search ring."
   (interactive "P")
   (let ((ref (oref-get-ref-at-point))

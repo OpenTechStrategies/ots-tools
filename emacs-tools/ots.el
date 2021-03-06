@@ -1,21 +1,21 @@
 ;;;;       Emacs Lisp code used at Open Tech Strategies, LLC.
 ;;;;               https://OpenTechStrategies.com/
-;;;; 
+;;;;
 ;;;; Copyright (c) 2014-2019 Open Tech Strategies, LLC
-;;;; 
+;;;;
 ;;;; This program is free software: you can redistribute it and/or modify
 ;;;; it under the terms of the GNU General Public License as published by
 ;;;; the Free Software Foundation, either version 3 of the License, or
 ;;;; (at your option) any later version.
-;;;; 
+;;;;
 ;;;; This program is distributed in the hope that it will be useful, but
 ;;;; WITHOUT ANY WARRANTY; without even the implied warranty of
 ;;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 ;;;; General Public License for more details.
-;;;; 
+;;;;
 ;;;; If you did not receive a copy of the GNU General Public License
 ;;;; along with this program, see <http://www.gnu.org/licenses/>.
-;;;; 
+;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;
 ;;;; Overview
@@ -42,7 +42,7 @@
 ;;;;     (when (file-exists-p ots-elisp-root)
 ;;;;       (add-to-list 'load-path ots-elisp-root)
 ;;;;       (load "ots")))
-;;;;   
+;;;;
 ;;;; We try to stay compatible with the most recent official releases
 ;;;; of Org Mode, but... we don't try too hard.  If something related
 ;;;; to Org Mode seems not to be working, try running the development
@@ -87,7 +87,7 @@ but with the path portion adjusted as appropriate:
 ;; you can turn on by running `M-x abbrev-mode'.
 
 ;; LaTeX: where *every* character gets to be special.
-;; 
+;;
 ;; But seriously: a further improvement to the below would be to make
 ;; non-LaTeX abbrevs here, but define a OTS-specific LaTeX mode hook
 ;; that overrides them by using `define-mode-abbrev' (which *should*
@@ -129,10 +129,10 @@ but with the path portion adjusted as appropriate:
 
 
 ;;; Compatibility shims.
-;;; 
+;;;
 ;;; Most distributions ship Emacs 24.x as of this writing, so that's
 ;;; the highest major version OTS Elisp requires.  But recent dev
-;;; versions of Emacs have some nifty stuff, so we import some of 
+;;; versions of Emacs have some nifty stuff, so we import some of
 ;;; that stuff from the future.
 
 (unless (fboundp 'string-trim-right)
@@ -174,7 +174,7 @@ the latter are non-destructive: if you have non-OTS stuff in
         (append (list ots-org-file)
                 (split-string
                  (shell-command-to-string
-                  (format 
+                  (format
                    (concat "find '%s' "
                            "  \\( "
                            "    -name notes.org "
@@ -219,7 +219,7 @@ the latter are non-destructive: if you have non-OTS stuff in
 
 
 ;;; Deliverables-tracking system.
-;; 
+;;
 ;; Note that this system depends on `ots-org-files' having been
 ;; initialized correctly above.  If deliverables aren't showing up as
 ;; expected, make sure the corresponding 'notes.org' file is
@@ -240,7 +240,7 @@ the latter are non-destructive: if you have non-OTS stuff in
 (let ((new (mapcar (lambda (sort-spec)
                      (if (and (eq (car sort-spec) 'tags)
                               (not (eq (cadr sort-spec) 'timestamp-up)))
-                         (append (list (car sort-spec)) 
+                         (append (list (car sort-spec))
                                  (list 'timestamp-up)
                                  (cdr sort-spec))
                        sort-spec))
@@ -249,13 +249,13 @@ the latter are non-destructive: if you have non-OTS stuff in
 
 (defvar ots-deliverables-horizon 30
   "Don't show items farther in the future than this number of days,
-in `ots-browse-deliverables'.  
+in `ots-browse-deliverables'.
 This can be nil (in which case there will be no time horizon), but if
 non-nil it must be a positive integer; the behavior if negative is
 undefined.  Deliverables whose dates are in the past are always shown.")
 
 (defvar ots-deliverables-current-horizon nil
-  "Internal variable used to keep an deliverables horizon active in 
+  "Internal variable used to keep an deliverables horizon active in
 the deliverables buffer.  Users should never set this.")
 
 (defun ots-browse-deliverables (&optional days-into-future)
@@ -263,7 +263,7 @@ the deliverables buffer.  Users should never set this.")
 This is the expected entry point for listing upcoming deliverables.
 
 Optional prefix argument DAYS-INTO-FUTURE limits how many days into
-the future to consider deliverables.  Set `ots-deliverables-horizon' 
+the future to consider deliverables.  Set `ots-deliverables-horizon'
 to get a default limit, but an interactive prefix arg will override
 that default.  Repeated calls preserve the current limit, so to set
 a new limit interactively just invoke with a new prefix argument.
@@ -291,23 +291,23 @@ top, where \"Foo\" is a short-but-recognizeable name for the client."
   ;; See https://orgmode.org/manual/Tag-inheritance.html.
   ;; You might think that `org-tags-exclude-from-inheritance'
   ;; or maybe `org-agenda-show-inherited-tags' or maybe
-  ;; `org-agenda-use-tag-inheritance' would be relevant here, 
+  ;; `org-agenda-use-tag-inheritance' would be relevant here,
   ;; but nope.  Only `org-use-tag-inheritance' matters.
   ;;
   ;; TODO: Some improvements we could use:
-  ;; 
+  ;;
   ;;   1) Right now the resultant buffer has header
-  ;; 
+  ;;
   ;;        "Headlines with TAGS match: DUE
   ;;         Press ‘C-u r’ to search again"
-  ;; 
+  ;;
   ;;      That's just noise for us.  We don't need
   ;;      either line showing, and we also don't need
   ;;      what the second line says to be true (because
   ;;      `g' is the traditional key for reloading, and
   ;;      it does `org-agenda-redo-all').
-  ;;      
-  ;;   2) When the buffer is regenerated via `g' or `r' 
+  ;;
+  ;;   2) When the buffer is regenerated via `g' or `r'
   ;;      or `C-u r', our custom let-bound settings for
   ;;      `org-agenda-hide-tags-regexp' and
   ;;      `org-use-tag-inheritance' are no longer in
@@ -323,14 +323,14 @@ top, where \"Foo\" is a short-but-recognizeable name for the client."
   ;; including a value for `org-agenda-overriding-header'.
   ;;
   ;; But for now, we solve it by rebinding 'g' :-).
-  (let ((org-agenda-buffer-name "*OTS Deliverables*") 
+  (let ((org-agenda-buffer-name "*OTS Deliverables*")
         (org-agenda-overriding-header
          (concat
-          (if days-into-future 
-              (format "OTS deliverables through %d days from now.\n" 
+          (if days-into-future
+              (format "OTS deliverables through %d days from now.\n"
                       days-into-future)
             "All OTS deliverables.\n")
-          "Type `g' to refresh; " 
+          "Type `g' to refresh; "
           "use prefix arg to set time horizon in days."
           "\n"))
         (org-agenda-hide-tags-regexp "^DUE$")
@@ -350,9 +350,9 @@ top, where \"Foo\" is a short-but-recognizeable name for the client."
 
 
 ;; Display the Org Mode header path (Outline path) from top to point.
-;; 
+;;
 ;; This is a variant of functionality already available in Org Mode.
-;; 
+;;
 ;; When we wrote this, we didn't know about `org-get-outline-path'
 ;; (nor about the related fact that org-eldoc displays in the
 ;; minibuffer the outline path for the current heading).  In
@@ -361,7 +361,7 @@ top, where \"Foo\" is a short-but-recognizeable name for the client."
 ;; displayer.")  Adam Porter helpfully pointed these out, and I (Karl)
 ;; tried it out.  I found `ots-org-display-headings-to-point'
 ;; preferable because it's easier on the eye, at least IMHO.
-;; 
+;;
 ;; As that thread discusses, the ideal thing to do would be to update
 ;; our code to use what Org Mode already provides.  As that thread
 ;; also discusses, that is more easily said than done because the
@@ -369,7 +369,7 @@ top, where \"Foo\" is a short-but-recognizeable name for the client."
 ;; functionality we want, though Adam goes partway there in his post
 ;; https://lists.gnu.org/archive/html/emacs-orgmode/2019-12/msg00073.html
 ;; for what it's worth.
-;; 
+;;
 ;; Anyway, for now we just have these independently-written functions
 ;; that sort of, but not quite, duplicate features in Org Mode.
 
@@ -398,7 +398,7 @@ Display each title on its own line, indented proportionally to its level."
                               (prog1
                                   (if (zerop level)
                                       (concat "• " title)
-                                    (concat "\n" 
+                                    (concat "\n"
                                             (make-string (* level 2) ? )
                                             "→ " title))
                                 (setq level (1+ level))))
@@ -483,7 +483,7 @@ entries), just update the running total for that entry type."
         (goto-char (point-min))
         (while (re-search-forward entry-re nil t)
           (let ((type (match-string 1)))
-            (cond 
+            (cond
              ((string-equal type "time")
               (forward-char -1) (forward-sexp 2) (forward-char 1)
               (let ((hours (string-to-number
@@ -532,7 +532,7 @@ entries), just update the running total for that entry type."
 
 (defun ots-org-headings (level &optional end)
   "Return an alist of heading names at LEVEL and their locations.
-LEVEL is the Org Mode subtree depth -- the number of asterisks. 
+LEVEL is the Org Mode subtree depth -- the number of asterisks.
 Start searching from point; optional argument END means don't
 search past END.  A heading may have \"|\"-separated alternate names.
 The returned list is suitable for `completing-read'.
@@ -567,7 +567,7 @@ position 762 at the beginning of a line in the buffer and LEVEL == 1:
             (setq names (string-trim-right names))
             ;; Remove any Org Mode tags (like ":SOME_TAG:" at the end
             ;; of a heading line).
-            (setq names (replace-regexp-in-string 
+            (setq names (replace-regexp-in-string
                          "\\s-+:[a-zA-Z0-9@_:]+:$" "" names))
             ;; Now convert names from a messy string to a clean list.
             (setq names (split-string names "\s+|\s+"))
@@ -639,7 +639,7 @@ Asciidoc formatting should be outside the region."
 
 (defun ots-crm-entries ()
   "Return a list of crm entry names and positions.
-This works like `ots-org-headings' called in the crm file, 
+This works like `ots-org-headings' called in the crm file,
 and the return value is thus suitable for `completing-read'."
   (ots-with-org-file ots-crm-file (ots-org-headings 1)))
 
@@ -677,9 +677,9 @@ and bind 'q' to `bury-buffer'."
       (setq-local ots-crm-entry-bounds (cdr crm-entry))
       (local-set-key "q" (lambda () (interactive)
                            (delete-windows-on (current-buffer))))
-      (local-set-key 
-       "\r" 
-       (lambda () 
+      (local-set-key
+       "\r"
+       (lambda ()
          (interactive)
          ;; If Elisp were a lexically scoped language, the way to do
          ;; this would be obvious.  However, Elisp is dynamically
@@ -690,7 +690,7 @@ and bind 'q' to `bury-buffer'."
          ;; `let' bindings are the solution.  Yay.
          (let ((start          (car  ots-crm-entry-bounds))
                (end            (cadr ots-crm-entry-bounds))
-               (highlight-face (if (facep 'highlight) 
+               (highlight-face (if (facep 'highlight)
                                    'highlight ; Is this a standard or not?
                                  ;; In case not, default to manual highlight.
                                  '(:background "grey20"))))
@@ -708,8 +708,8 @@ and bind 'q' to `bury-buffer'."
     ;; Totally not sure I'm doing this right.  The `display-buffer'
     ;; doc string is one of the seven wonders of the ancient world.
     (display-buffer buf
-                    '(display-buffer-at-bottom 
-                      . ((window-height 
+                    '(display-buffer-at-bottom
+                      . ((window-height
                           . shrink-window-if-larger-than-buffer))))))
 
 (defun ots-crm-lookup (name)
@@ -777,7 +777,7 @@ With optional prefix arg INSERT, also insert it into the buffer at point."
                (search-forward "OTS Conference Call")
                (search-forward "+1-")
                (forward-char -3)
-               (buffer-substring-no-properties 
+               (buffer-substring-no-properties
                 (point) (progn (end-of-line) (point))))))
     (when insert (insert txt))
     (let ((select-enable-primary t)) (kill-new txt))
@@ -786,7 +786,7 @@ With optional prefix arg INSERT, also insert it into the buffer at point."
 
 (defun ots-copy-link ()
   "Put the link around point into the kill-ring (i.e., the clipboard).
-The link around point can either be a plain URL, or an Org Mode 
+The link around point can either be a plain URL, or an Org Mode
 bracketed link as per `org-bracket-link-regexp'.  If there is no link
 around point, just return nil."
   (interactive)
@@ -810,7 +810,7 @@ around point, just return nil."
 (defun ots-ref-forward-to-published ()
   (interactive)
   (display-message-or-buffer
-   (concat 
+   (concat
     "The OTS ref system is now published as 'oref.el'.\n"
     "\n"
     "The new recommended entry point is `oref-do-ref',\n"
@@ -868,9 +868,9 @@ also switching to real `markdown-mode' iff it is available."
   (setq major-mode 'ots-markdown-mode)
   (setq mode-name "OTS Fake Markdown Mode")
   ;; Note we deliberately do not do this:
-  ;; 
+  ;;
   ;;   (run-mode-hooks 'ots-markdown-mode-hook)
-  ;; 
+  ;;
   ;; ...because while there is an `ots-markdown-mode-hook', it's
   ;; meant to be run by real `markdown-mode' (if installed).
   ;; Meanwhile, our fake shim mode need not run any mode hook.
@@ -880,7 +880,7 @@ also switching to real `markdown-mode' iff it is available."
   ;; Make absolutely sure about the TABs.
   (setq indent-tabs-mode nil))
 
-(mapcar 
+(mapcar
  (lambda (e) (add-to-list 'auto-mode-alist (cons e 'ots-markdown-mode)))
  (list "\\.md\\'" "\\.mdwn\\'" "\\.markdown\\'"))
 
