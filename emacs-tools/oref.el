@@ -5,15 +5,9 @@
 ;; "Installation" below for how to install this package into Emacs.
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-<<<<<<< HEAD
 ;;
-;; Copyright (c) 2016, 2018, 2019, 2020 Open Tech Strategies, LLC
+;; Copyright (c) 2016-2021 Open Tech Strategies, LLC
 ;;
-=======
-;;
-;; Copyright (c) 2016-2018, 2021 Open Tech Strategies, LLC
-;;
->>>>>>> ab72bd2 (Whitespace)
 ;; This program is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
 ;; the Free Software Foundation, either version 3 of the License, or
