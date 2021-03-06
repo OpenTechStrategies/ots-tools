@@ -815,13 +815,6 @@ around point, just return nil."
 	(kill-ring-save (point-min) (point-max))
 	(switch-to-buffer nil)
 	)
-(defun ots-send-region-to-hastebin ()
-	"Send region to hastebin and put resulting URL in kill ring.
-Requires the 'haste' client program; do 'gem install haste' or see
-https://github.com/seejohnrun/haste-client."
-	(interactive)
-	(ots-shell-command-on-region-capture "haste")
-	)
 
 ;;; OTS preferences for various modes.
 
