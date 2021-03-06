@@ -128,7 +128,6 @@ to insert a mode-specific alternate form of citation.  For example, in
 LaTeX mode, \\[yank] with prefix arg inserts \"\\oref{ref:...}\".
 
 If you're considering binding this to a key, see `oref-do-ref' instead."
-  (interactive)
   (let ((ref-str (format "ref:%s" (oref-make-uuid 8))))
     (insert "[" ref-str "]")
     (when (and
@@ -258,7 +257,6 @@ If you're considering binding this to a key, see `oref-do-ref' instead."
   ;; we had a lot of files with refs in them, we might want to move
   ;; recent hit files to the head of oref-ref-files-cache.
 
-  (interactive)
   ;; If called interactively, get the ref around point.
   (when (and (called-interactively-p) (not ref))
     (setq ref (oref-get-ref-at-point)))

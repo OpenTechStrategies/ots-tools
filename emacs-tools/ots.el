@@ -805,27 +805,6 @@ around point, just return nil."
         link))))
 
 
-;;; Forwarding pointers for the ref system that used to be here.
-
-(defun ots-ref-forward-to-published ()
-  (interactive)
-  (display-message-or-buffer
-   (concat
-    "The OTS ref system is now published as 'oref.el'.\n"
-    "\n"
-    "The new recommended entry point is `oref-do-ref',\n"
-    "which replaces `ots-do-ref'.  Please update your\n"
-    "Emacs configuration accordingly.\n"
-    "\n"
-    "https://github.com/OpenTechStrategies/ots-tools/blob/master/emacs-tools/oref.el\n"
-    "\n"
-    )))
-(defalias 'ots-set-ref 'ots-ref-forward-to-published)
-(defalias 'ots-find-ref 'ots-ref-forward-to-published)
-(defalias 'ots-do-ref 'ots-ref-forward-to-published)
-
-
-
 (defun ots-shell-command-on-region-capture (&optional command)
 	"Execute shell command on region, and put the output into the kill ring."
 	(interactive)
