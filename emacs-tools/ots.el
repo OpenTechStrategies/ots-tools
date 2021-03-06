@@ -1,7 +1,7 @@
 ;;;;       Emacs Lisp code used at Open Tech Strategies, LLC.
 ;;;;               https://OpenTechStrategies.com/
 ;;;;
-;;;; Copyright (c) 2014-2019 Open Tech Strategies, LLC
+;;;; Copyright (c) 2014-2019, 2021 Open Tech Strategies, LLC
 ;;;;
 ;;;; This program is free software: you can redistribute it and/or modify
 ;;;; it under the terms of the GNU General Public License as published by

@@ -11,7 +11,7 @@
 ;;
 =======
 ;;
-;; Copyright (c) 2016, 2017, 2018 Open Tech Strategies, LLC
+;; Copyright (c) 2016-2018, 2021 Open Tech Strategies, LLC
 ;;
 >>>>>>> ab72bd2 (Whitespace)
 ;; This program is free software: you can redistribute it and/or modify
