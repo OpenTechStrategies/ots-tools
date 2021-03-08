@@ -121,7 +121,7 @@ When pasting a reference with \\[yank], you may use a prefix argument
 to insert a mode-specific alternate form of citation.  For example, in
 LaTeX mode, \\[yank] with prefix arg inserts \"\\oref{ref:...}\".
 
-If you're considering binding this to a key, see `oref-do-ref' instead."
+The interactive entry point to this is `oref-do-ref'."
   (let ((ref-str (format "ref:%s" (oref-make-uuid 8))))
     (insert "[" ref-str "]")
     (when (and
@@ -243,7 +243,7 @@ usually wants to be able to return to where one was in either buffer.
 Refs are searched for in the files listed in `oref-ref-files-cache',
 which is built as needed by `oref-ref-files-rebuild-cache', which see.
 
-If you're considering binding this to a key, see `oref-do-ref' instead."
+The interactive entry point to this is `oref-do-ref'."
 
   ;; TODO: It might be interesting to sort the search list by
   ;; closeness to the current dir.  The cost of sort might be higher
