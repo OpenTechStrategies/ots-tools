@@ -447,7 +447,7 @@ interactively, prompt for RATE, and display result in minibuffer."
              (* (float total-hours) (float rate)))
     (list total-hours (* (float total-hours) (float rate)))))
 
-(defun ots-update-invoice-totals (rate)
+(defun ots-invoice-update-totals (rate)
   "Walk through all entries in an invoice, updating totals at RATE.
 Print and return a list of all the totals by type, in this form:
 
@@ -528,6 +528,9 @@ entries), just update the running total for that entry type."
             (list 'time-dollars time-dollars)
             (list 'flat-dollars flat-dollars)
             (list 'expense-dollars expense-dollars)))))
+
+;; Legacy name.
+(defalias 'ots-invoice-update-totals 'ots-update-invoice-totals)
 
 
 (defun ots-org-headings (level &optional end)
