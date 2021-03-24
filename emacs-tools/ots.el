@@ -179,7 +179,7 @@ the latter are non-destructive: if you have non-OTS stuff in
                            "  \\( "
                            "    -name notes.org "
                            "    -o "
-                           "    -name proposal-notes.org "
+                           "    -name private-notes.org "
                            "  \\) "
                            "  -print "
                            "| grep -v '/personnel/' "
