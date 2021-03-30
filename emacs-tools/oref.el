@@ -169,7 +169,7 @@ then return a cons cell: (REF-STR-WITHOUT-SQUARE-BRACES . 'source)."
   "Cache of files that contain [ref:] tags.
 Users should not modify this variable.")
 
-(defun oref-ref-files-rebuild-cache (root)
+(defun oref-rebuild-refs (root)
   "(Re)build cache of files under ROOT whose contents contain \"[ref:]\" tags.
 The cache is `oref-ref-files-cache', whose value will be updated."
   (interactive "DRebuild OTS ref cache starting from directory: ")
@@ -191,6 +191,8 @@ The cache is `oref-ref-files-cache', whose value will be updated."
                                root))
                       "\n"))
   (message "done"))
+
+(defalias 'oref-ref-files-rebuild-cache 'oref-rebuild-refs)
 
 (defun oref-find-ref-internal (ref)
   "Jump to the origin site of REF. The origin site is the one
@@ -241,7 +243,7 @@ is that when working in either one buffer or alternating between two
 usually wants to be able to return to where one was in either buffer.
 
 Refs are searched for in the files listed in `oref-ref-files-cache',
-which is built as needed by `oref-ref-files-rebuild-cache', which see.
+which is built as needed by `oref-rebuild-refs', which see.
 
 The interactive entry point to this is `oref-do-ref'."
 
@@ -261,7 +263,7 @@ The interactive entry point to this is `oref-do-ref'."
 
   ;; If we do not have a list of files to search, make one.
   (unless oref-ref-files-cache
-    (call-interactively 'oref-ref-files-rebuild-cache))
+    (call-interactively 'oref-rebuild-refs))
   (while (not (oref-find-ref-internal ref))
     ;; TODO: Here is where to fix issue #9.  `oref-find-ref-internal'
     ;; should probably become `oref-find-ref-in-files', with
