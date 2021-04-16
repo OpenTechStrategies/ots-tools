@@ -787,17 +787,42 @@ With optional prefix arg INSERT, also insert it into the buffer at point."
     (message "%s" txt)
     txt))
 
+(defun ots-reftex-label-around-point ()
+  "Return the LaTeX label around point, or nil if none.
+This should really be a `reftex-*' function, and perhaps in fact there
+already is one that does this.  But after a little bit of searching it
+was faster just to write this than to keep looking.  I've given it the
+prefix `ots-reftex-' as a reminder that we should either find the
+equivalent function in Emacs's `reftex' or contribute this to there."
+  (interactive)
+  (save-match-data
+    (save-excursion
+      (let ((opoint (point))
+            (bol (progn (beginning-of-line) (point)))
+            (eol (progn (end-of-line) (point)))
+            (label-start nil))
+        (goto-char opoint)
+        (and (search-backward "\\label{" bol t)
+             (forward-word 1)
+             (progn (forward-char 1) t) ; `forward-char' doesn't document its return!
+             (setq label-start (point))
+             (not (search-forward "{" opoint t))
+             (search-forward "}" eol t)
+             (progn (forward-char -1) t)
+             (buffer-substring-no-properties label-start (point)))))))
+
 (defun ots-copy-link ()
   "Put the link around point into the kill-ring (i.e., the clipboard).
-The link around point can either be a plain URL, or an Org Mode
-bracketed link as per `org-bracket-link-regexp'.  If there is no link
-around point, just return nil."
+The link around point can either be a plain URL, an Org Mode
+bracketed link as per `org-bracket-link-regexp', or a LaTeX label in
+curly braces.  If there is no link around point, just return nil."
   (interactive)
   (save-match-data
     (let ((link nil))
       (cond
        ((org-in-regexp org-bracket-link-regexp 1)
         (setq link (org-link-unescape (match-string-no-properties 1))))
+       ((setq link (ots-reftex-label-around-point)))
        ((thing-at-point 'url)
         (setq link (thing-at-point 'url))))
       (when link
