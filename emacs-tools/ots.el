@@ -530,7 +530,7 @@ entries), just update the running total for that entry type."
             (list 'expense-dollars expense-dollars)))))
 
 ;; Legacy name.
-(defalias 'ots-invoice-update-totals 'ots-update-invoice-totals)
+(defalias 'ots-update-invoice-totals 'ots-invoice-update-totals)
 
 
 (defun ots-org-headings (level &optional end)
