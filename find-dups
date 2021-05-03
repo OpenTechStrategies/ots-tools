@@ -488,9 +488,21 @@ def main():
 
     results = gather(roots, inverse, ignore_missing, ignored_directories, ignore_empty)
 
+    def safe_utf8(s):
+        """Safely (re)encode string S as UTF-8, degrading problematic
+        characters to backslash replacements codes as needed."""
+        # Sometimes when we try to print a path, we get an error like... 
+        # 
+        # "UnicodeEncodeError: 'utf-8' codec can't encode character '\udce0' in position 128: surrogates not allowed"
+        # 
+        # ...if not that path in the filesystem is not proper UTF-8,
+        # or is not being read as UTF-8 by Python for some reason that
+        # I don't have time nor inclination to debug right now.
+        return s.encode('utf-8', 'backslashreplace').decode('utf-8', 'backslashreplace')
+
     if inverse:
         for path in results:
-            print("%s" % path)
+            print("%s" % safe_utf8(path))
     else:
         total_dup_size = 0
 
@@ -519,13 +531,14 @@ def main():
                 % (checksum, len(mtime_sorted_paths), size))
             common_prefix = common_path_prefix([x[0] for x in mtime_sorted_paths])
             if common_prefix:
-                print("(common parent: %s)" % common_prefix)
+                print("(common parent: %s)" % safe_utf8(common_prefix))
             unique_inodes = { }
             for tup in mtime_sorted_paths:
                 pretty_time = time.strftime("%Y/%m/%d %H:%M:%S", 
                                             time.localtime(tup[1].mtime))
                 unique_inodes[tup[1].inode] = size
-                print("  %s (inode %s): %s" % (pretty_time, tup[1].inode, tup[0]))
+                print("  %s (inode %s): %s" % (pretty_time, tup[1].inode,
+                                               safe_utf8(tup[0])))
             print("")
             total_dup_size += sum(unique_inodes.values()) - size
         # We could also print out the size in human-readable form
