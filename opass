@@ -303,12 +303,27 @@ def main():
     def do_git_svn_thing(thing):
         # THING is probably "rebase", "push", or "dcommit"
         try:
-            # We redirect stdout to stderr here because this isn't the main
-            # purpose of opass, but is a side effect of the surrounding toolchain.
-            # This was affecting the output of scripts built on top of opass
-            # secrets around ansible.
-            subprocess.run([pass_pgm, 'git-svn', thing,], stdout=sys.stderr,
-                           shell=False, encoding="UTF-8", check=True)
+            completed = subprocess.run([pass_pgm, 'git-svn', thing,], 
+                                       capture_output=True,
+                                       shell=False, 
+                                       encoding="UTF-8", 
+                                       text=True,
+                                       check=True)
+            # We filter some lines out because they're common and
+            # carry no useful information.  Everything else we print,
+            # but always to stderr, whether it came from stdout or
+            # stderr.  That's because the output here isn't the main
+            # purpose of opass, but is just a side effect of the
+            # surrounding toolchain, and having noise on stdout was
+            # affecting scripts that use opass to automatically fetch
+            # secrets for use with, e.g., ansible.
+            for line in completed.stdout.splitlines(keepends=True):
+                if line.find("Current branch main is up to date.") != -1:
+                    pass
+                else:
+                    sys.stderr.write("%s" % line)
+            for line in completed.stderr.splitlines(keepends=True):
+                sys.stderr.write("%s" % line)
         except subprocess.CalledProcessError:
             global setup_message
             sys.stderr.write(setup_message)
@@ -327,21 +342,46 @@ def main():
         if sync and online_p:
             do_git_svn_thing("rebase")
         maybe_changed = True
-        try:
-            subprocess.run([pass_pgm,] + things, input=content,
-                           shell=False, encoding="UTF-8", check=True)
-        except subprocess.CalledProcessError as err:
-            if ((err.returncode == 1)
-                and (err.output is None)
-                and (err.stderr is None)):
-                # If we got an error but all the above conditions hold,
-                # then it just means the user made no changes to the
-                # file, so there's no need for us to dcommit later.
-                maybe_changed = False
-            else:
-                raise err
-        if sync and online_p and maybe_changed:
-            do_git_svn_thing("dcommit")
+        # If we were to just invoke 'pass' or 'pass ls', we'd get the
+        # standard tree-style output of 'pass'.  That's not actually
+        # very useful, though.  Since we're just getting a listing in
+        # order to then invoke 'opass' on some specific path, listings
+        # should be presented in the format most amenable to copying
+        # and pasting arguments to 'opass'.  So here we just print out
+        # all the paths that could be valid arguments to opass, that
+        # is, the relative path (under ~/.password-store) of every
+        # file ending in ".gpg", with the ".gpg" suffix stripped off.
+        #
+        # If it turns out that some people really like the tree-style
+        # output, we can easily add it back as an option, controlled
+        # by a flag, a subcommand, an environment variable, whatever.
+        if things[0] == "ls" or things[0] == "list":
+            if len(things) > 1:
+                sys.stderr.write("ERROR: can only list whole tree, "
+                                 "not subtrees\n")
+                sys.exit(1)
+            pass_top = os.path.expanduser("~/.password-store")
+            for root, dirs, files in os.walk(pass_top):
+                for f in files:
+                    if f.endswith(".gpg"):
+                        # Substring skips leading slash and chops trailing ".gpg".
+                        print('{}/{}'.format(root.replace(pass_top, ''), f)[1:-4])
+        else:
+            try:
+                subprocess.run([pass_pgm,] + things, input=content,
+                               shell=False, encoding="UTF-8", check=True)
+            except subprocess.CalledProcessError as err:
+                if ((err.returncode == 1)
+                    and (err.output is None)
+                    and (err.stderr is None)):
+                    # If we got an error but all the above conditions hold,
+                    # then it just means the user made no changes to the
+                    # file, so there's no need for us to dcommit later.
+                    maybe_changed = False
+                else:
+                    raise err
+            if sync and online_p and maybe_changed:
+                do_git_svn_thing("dcommit")
 
     if cmd == "ls" or cmd == "list":
         if online_p:
