@@ -300,6 +300,28 @@ def main():
         sys.stderr.write("ERROR: Cannot find 'pass' program in PATH.\n")
         sys.exit(1)
 
+    def list_paths():
+        # We don't use the default list output of 'pass', because
+        # that's a tree-style display (using the 'tree' utility)
+        # that's not actually very useful for our purposes.  We want
+        # listings presented in a format amenable to copying and
+        # pasting arguments to a subsequent 'opass' command.
+        # 
+        # So we have our own function to print all the paths that
+        # could be valid arguments to opass.  That is, the relative
+        # path (under ~/.password-store) of every file ending in
+        # ".gpg", but with the ".gpg" suffix stripped off.
+        #
+        # If it turns out that some people really like the tree-style
+        # output, we can easily add it back as an option, controlled
+        # by a flag, a subcommand, an environment variable, whatever.
+        pass_top = password_store_root()
+        for root, dirs, files in os.walk(pass_top):
+            for f in files:
+                if f.endswith(".gpg"):
+                    # Substring skips leading slash and chops trailing ".gpg".
+                    print('{}/{}'.format(root.replace(pass_top, ''), f)[1:-4])
+
     def do_git_svn_thing(thing):
         # THING is probably "rebase", "push", or "dcommit"
         try:
@@ -342,51 +364,26 @@ def main():
         if sync and online_p:
             do_git_svn_thing("rebase")
         maybe_changed = True
-        # If we were to just invoke 'pass' or 'pass ls', we'd get the
-        # standard tree-style output of 'pass'.  That's not actually
-        # very useful, though.  Since we're just getting a listing in
-        # order to then invoke 'opass' on some specific path, listings
-        # should be presented in the format most amenable to copying
-        # and pasting arguments to 'opass'.  So here we just print out
-        # all the paths that could be valid arguments to opass, that
-        # is, the relative path (under ~/.password-store) of every
-        # file ending in ".gpg", with the ".gpg" suffix stripped off.
-        #
-        # If it turns out that some people really like the tree-style
-        # output, we can easily add it back as an option, controlled
-        # by a flag, a subcommand, an environment variable, whatever.
-        if things[0] == "ls" or things[0] == "list":
-            if len(things) > 1:
-                sys.stderr.write("ERROR: can only list whole tree, "
-                                 "not subtrees\n")
-                sys.exit(1)
-            pass_top = os.path.expanduser("~/.password-store")
-            for root, dirs, files in os.walk(pass_top):
-                for f in files:
-                    if f.endswith(".gpg"):
-                        # Substring skips leading slash and chops trailing ".gpg".
-                        print('{}/{}'.format(root.replace(pass_top, ''), f)[1:-4])
-        else:
-            try:
-                subprocess.run([pass_pgm,] + things, input=content,
-                               shell=False, encoding="UTF-8", check=True)
-            except subprocess.CalledProcessError as err:
-                if ((err.returncode == 1)
-                    and (err.output is None)
-                    and (err.stderr is None)):
-                    # If we got an error but all the above conditions hold,
-                    # then it just means the user made no changes to the
-                    # file, so there's no need for us to dcommit later.
-                    maybe_changed = False
-                else:
-                    raise err
-            if sync and online_p and maybe_changed:
-                do_git_svn_thing("dcommit")
+        try:
+            subprocess.run([pass_pgm,] + things, input=content,
+                           shell=False, encoding="UTF-8", check=True)
+        except subprocess.CalledProcessError as err:
+            if ((err.returncode == 1)
+                and (err.output is None)
+                and (err.stderr is None)):
+                # If we got an error but all the above conditions hold,
+                # then it just means the user made no changes to the
+                # file, so there's no need for us to dcommit later.
+                maybe_changed = False
+            else:
+                raise err
+        if sync and online_p and maybe_changed:
+            do_git_svn_thing("dcommit")
 
     if cmd == "ls" or cmd == "list":
         if online_p:
             do_git_svn_thing("rebase")
-        do_pass_thing(['ls',], sync=False)
+        list_paths()
     elif cmd == "up" or cmd == "update" or cmd == "sync":
         if not online_p:
             sys.stderr.write("ERROR: cannot use -o / --offline "
@@ -541,7 +538,7 @@ def main():
         if service is not None:
             do_pass_thing(['show', service,], sync=False)
         else:
-            do_pass_thing(['list',], sync=False)
+            list_paths()
     elif cmd == "edit":
         do_pass_thing(['edit', service,], sync=True)
     elif cmd == "mv":
