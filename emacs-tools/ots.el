@@ -532,6 +532,33 @@ entries), just update the running total for that entry type."
 ;; Legacy name.
 (defalias 'ots-update-invoice-totals 'ots-invoice-update-totals)
 
+(defun ots-day-from-date (&optional date)
+  "Interactively, display day-of-week for the date around point.
+Non-interactively, DATE is a string like \"2021-07-31\" (but with
+any single character or the empty string instead of \"-\"), and
+the return value is a full day-of-week string (e.g., \"Monday\")."
+  (interactive)
+  (require 'calendar)
+  (when (not date)
+    ;; `filename' is the t-a-p spec that best matches dates
+    (setq date (thing-at-point 'filename t)))
+  (save-match-data
+   (string-match (concat
+                  "\\([0-9][0-9][0-9][0-9]\\)"
+                  "[^0-9]*"
+                  "\\([0-9][0-9]\\)"
+                  "[^0-9]*"
+                  "\\([0-9][0-9]\\)") date)
+   (let* ((year  (string-to-number (match-string 1 date)))
+          (month (string-to-number (match-string 2 date)))
+          (day   (string-to-number (match-string 3 date)))
+          (ret   (aref ["Sunday" "Monday" "Tuesday" "Wednesday"
+                        "Thursday" "Friday" "Saturday"]
+                       (calendar-day-of-week (list month day year)))))
+     (if (interactive-p)
+         (message ret)
+       ret))))
+
 
 (defun ots-org-headings (level &optional end)
   "Return an alist of heading names at LEVEL and their locations.
