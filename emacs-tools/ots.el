@@ -482,36 +482,41 @@ entries), just update the running total for that entry type."
       (save-match-data
         (goto-char (point-min))
         (while (re-search-forward entry-re nil t)
-          (let ((type (match-string 1)))
-            (cond
-             ((string-equal type "time")
-              (forward-char -1) (forward-sexp 2) (forward-char 1)
-              (let ((hours (string-to-number
-                            (buffer-substring-no-properties
-                             (point) (progn (search-forward "}")
-                                            (forward-char -1)
-                                            (point))))))
-                (search-forward "{")
-                (delete-region (point)
-                               (progn (search-forward "}")
-                                      (forward-char -1)
-                                      (point)))
-                (setq hours-total (+ hours-total hours))
-                (let ((subtotal (* hours rate)))
-                  (insert (format "%.2f" subtotal))
-                  (setq time-dollars (+ time-dollars subtotal)))))
-             ((or (string-equal type "flat") (string-equal type "expense"))
-              (forward-char -1) (forward-sexp 2) (forward-char 1)
-              (let ((subtotal (string-to-number
-                               (buffer-substring-no-properties
-                                (point) (progn (search-forward "}")
-                                               (forward-char -1)
-                                               (point))))))
-                (if (string-equal type "expense")
-                    (setq expense-dollars (+ expense-dollars subtotal))
-                  (setq flat-dollars (+ flat-dollars subtotal)))))
-             (t
-              (error "Unrecognized entry type: '%s'" type)))))))
+          ;; Don't include lines that are commented out.  In TeX
+          ;; modes, this is how you tell whether a line is commented.
+          ;; I got this trick from `tex-handle-newline' in the Emacs
+          ;; sources.  It's totally obvious what it means, right?
+          (unless (nth 4 (syntax-ppss))
+            (let ((type (match-string 1)))
+              (cond
+               ((string-equal type "time")
+                (forward-char -1) (forward-sexp 2) (forward-char 1)
+                (let ((hours (string-to-number
+                              (buffer-substring-no-properties
+                               (point) (progn (search-forward "}")
+                                              (forward-char -1)
+                                              (point))))))
+                  (search-forward "{")
+                  (delete-region (point)
+                                 (progn (search-forward "}")
+                                        (forward-char -1)
+                                        (point)))
+                  (setq hours-total (+ hours-total hours))
+                  (let ((subtotal (* hours rate)))
+                    (insert (format "%.2f" subtotal))
+                    (setq time-dollars (+ time-dollars subtotal)))))
+               ((or (string-equal type "flat") (string-equal type "expense"))
+                (forward-char -1) (forward-sexp 2) (forward-char 1)
+                (let ((subtotal (string-to-number
+                                 (buffer-substring-no-properties
+                                  (point) (progn (search-forward "}")
+                                                 (forward-char -1)
+                                                 (point))))))
+                  (if (string-equal type "expense")
+                      (setq expense-dollars (+ expense-dollars subtotal))
+                    (setq flat-dollars (+ flat-dollars subtotal)))))
+               (t
+                (error "Unrecognized entry type: '%s'" type))))))))
     ;; If the buffer was unmodified when we started, and the invoice
     ;; was already correct, then don't pretend we changed anything.
     (when buffer-started-pristine
