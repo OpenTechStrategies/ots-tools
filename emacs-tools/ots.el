@@ -543,12 +543,10 @@ the return value is a full day-of-week string (e.g., \"Monday\")."
     ;; `filename' is the t-a-p spec that best matches dates
     (setq date (thing-at-point 'filename t)))
   (save-match-data
-   (string-match (concat
-                  "\\([0-9][0-9][0-9][0-9]\\)"
-                  "[^0-9]*"
-                  "\\([0-9][0-9]\\)"
-                  "[^0-9]*"
-                  "\\([0-9][0-9]\\)") date)
+   (string-match (concat "\\([0-9][0-9][0-9][0-9]\\)" "[^0-9]*"
+                         "\\([0-9][0-9]\\)"           "[^0-9]*"
+                         "\\([0-9][0-9]\\)")
+                 date)
    (let* ((year  (string-to-number (match-string 1 date)))
           (month (string-to-number (match-string 2 date)))
           (day   (string-to-number (match-string 3 date)))
