@@ -257,8 +257,11 @@ def main():
     # when doing so is part of its job.
     online_p = True  # default assumption
 
+    verbose = False
+
     try:
-        (opts, args) = getopt.getopt(sys.argv[1:], "ho", ["help", "offline",])
+        (opts, args) = getopt.getopt(sys.argv[1:], "hov",
+                ["help", "offline", "verbose"])
     except getopt.GetoptError as err:
         sys.stderr.write(str(err))
         sys.stderr.write("\n")
@@ -270,6 +273,8 @@ def main():
             sys.exit(0)
         if opt in ("-o", "--offline",):
             online_p = False
+        if opt in ("-v", "--verbose",):
+            verbose = True
 
     set_up_usermap()
 
@@ -325,7 +330,10 @@ def main():
     def do_git_svn_thing(thing):
         # THING is probably "rebase", "push", or "dcommit"
         try:
-            completed = subprocess.run([pass_pgm, 'git-svn', thing,],
+            args = [pass_pgm, 'git-svn', thing,]
+            if verbose:
+                print(args)
+            completed = subprocess.run(args,
                                        capture_output=True,
                                        shell=False,
                                        encoding="UTF-8",
@@ -365,7 +373,10 @@ def main():
             do_git_svn_thing("rebase")
         maybe_changed = True
         try:
-            subprocess.run([pass_pgm,] + things, input=content,
+            args = [pass_pgm,] + things
+            if verbose:
+                print(args)
+            subprocess.run(args, input=content,
                            shell=False, encoding="UTF-8", check=True)
         except subprocess.CalledProcessError as err:
             if ((err.returncode == 1)
