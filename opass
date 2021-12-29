@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 
 # Copyright (c) 2020 Open Tech Strategies, LLC
-# 
+#
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
 # by the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful, but
 # WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 # General Public License for more details.
-# 
+#
 # If you did not receive a copy of the GNU Affero General Public License
 # along with this program, see <http://www.gnu.org/licenses/>.
 
@@ -79,7 +79,7 @@ local operations and do not attempt to sync with the OTS repository.
 (Note that this option cannot be used with "update" or "push".)
 
 When operating online, you shouldn't normally need to use the 'push'
-command; opass will automatically do pushes for you.  But if you do 
+command; opass will automatically do pushes for you.  But if you do
 stuff offline, then when you get back online you should run 'push'.
 """
 
@@ -156,7 +156,7 @@ def set_up_usermap():
 def canonicalize_as_directory(path):
     """Canonicalize PATH as a directory path within the password store.
     If PATH is None or "/", then return "" (the root of the password
-    store tree).  Otherwise, return PATH with any trailing slash stripped. 
+    store tree).  Otherwise, return PATH with any trailing slash stripped.
     """
     if path is None or path == "/": return ""
     else: return os.path.normpath(path)
@@ -165,7 +165,7 @@ def canonicalize_as_directory(path):
 def get_directory_path_authz(directory):
     """Return the list of pubkeys (strings) that have access to DIRECTORY.
     DIRECTORY is an intermediate service path within the password store
-    (e.g., "infra/hosting" but not "infra/hosting/linode").  DIRECTORY 
+    (e.g., "infra/hosting" but not "infra/hosting/linode").  DIRECTORY
     must already be in canonical form; see canonicalize_as_directory().
 
     Raise a NoSuchDirectory exception if DIRECTORY does not exist.
@@ -213,7 +213,7 @@ def get_directory_path_authz(directory):
             % directory)
     elif not is_directory:  # is neither
         raise NoSuchDirectory(
-            "ERROR:\n '%s' is not a directory path." 
+            "ERROR:\n '%s' is not a directory path."
             % directory)
     # Okay, now we can start looking for .gpg-id access control files.
     # Because a given key list overrides any higher-level key list,
@@ -240,7 +240,7 @@ def main():
 
     def inline_username(username):
         """Return a parenthesized inline form of USERNAME
-        that happens to be useful in a few message strings.  
+        that happens to be useful in a few message strings.
         If USERNAME is None, return the empty string."""
         if username is not None:
             return " (" + username + ")"
@@ -254,7 +254,7 @@ def main():
     # ping some well-known site, but that would be both slow and a
     # violation of the privacy principle that a program generally
     # shouldn't make noises that are audible beyond the user except
-    # when doing so is part of its job. 
+    # when doing so is part of its job.
     online_p = True  # default assumption
 
     try:
@@ -306,7 +306,7 @@ def main():
         # that's not actually very useful for our purposes.  We want
         # listings presented in a format amenable to copying and
         # pasting arguments to a subsequent 'opass' command.
-        # 
+        #
         # So we have our own function to print all the paths that
         # could be valid arguments to opass.  That is, the relative
         # path (under ~/.password-store) of every file ending in
@@ -325,10 +325,10 @@ def main():
     def do_git_svn_thing(thing):
         # THING is probably "rebase", "push", or "dcommit"
         try:
-            completed = subprocess.run([pass_pgm, 'git-svn', thing,], 
+            completed = subprocess.run([pass_pgm, 'git-svn', thing,],
                                        capture_output=True,
-                                       shell=False, 
-                                       encoding="UTF-8", 
+                                       shell=False,
+                                       encoding="UTF-8",
                                        text=True,
                                        check=True)
             # We filter some lines out because they're common and
@@ -400,7 +400,7 @@ def main():
         # from a user perspective, although perfectly understandable
         # from an implementation perspective.
         #
-        # Imagine we're working with this subtree: 
+        # Imagine we're working with this subtree:
         #
         #   ./.gpg-id
         #   ./test.gpg
@@ -427,7 +427,7 @@ def main():
         # the top-level ./.gpg-id.  Originally, that meant the owners
         # of keys PUB_A and PUB_B could see everything in the entire
         # tree, and no one else could see anything.
-        # 
+        #
         # But then we ran 'pass init -p test/subdir-1/subdir-2 PUB_C'.
         # Afterwards, we get the full tree state shown above with two
         # '.gpg-id' files, and the following are all true:
@@ -444,12 +444,12 @@ def main():
         # and this doesn't change just because one of those foo.gpg
         # files coincidentally has the same basename (sans extension)
         # as a sibling subdirectory.
-        # 
+        #
         # So what should the behavior of 'opass' be?
         #
         # Several things:
         #
-        #  - Since authz control in 'pass' is only per-directory / 
+        #  - Since authz control in 'pass' is only per-directory /
         #    per sub-tree, never per-file, we can only allow authz
         #    ops on directories, never on leaf services themselves.
         #    If the user tries to do an authz op on a leaf service,
@@ -465,7 +465,7 @@ def main():
         #    access should be affected when one of these operations is
         #    performed.  Whichever operation it is, it's only about
         #    PUB_KEY, not about other keys.
-        # 
+        #
         #  - When a target directory 'foo' also has a sibling
         #    encrypted file 'foo.gpg', we should issue a warning that
         #    the authz for the 'foo' service (that is, for 'foo.gpg')
@@ -476,7 +476,7 @@ def main():
         current_keys = get_directory_path_authz(directory)
         if pub_key in current_keys:
             sys.stderr.write("WARNING: public key '%s'%s already "
-                             "authorized for '%s'\n" 
+                             "authorized for '%s'\n"
                              % (pub_key,
                                 inline_username(fprints_to_users.get(pub_key)),
                                 directory))
@@ -490,8 +490,8 @@ def main():
         current_keys = get_directory_path_authz(directory)
         if pub_key not in current_keys:
             sys.stderr.write("WARNING: public key '%s'%s is not currently "
-                             "authorized for '%s'\n" 
-                             % (pub_key, 
+                             "authorized for '%s'\n"
+                             % (pub_key,
                                 inline_username(fprints_to_users.get(pub_key)),
                                 directory))
             sys.stderr.write("         (Use 'list-keys %s' to see all keys "
@@ -526,7 +526,7 @@ def main():
         # passwords and such into tmp files seems like something that many
         # users would prefer not happen, so for now, we just do whatever
         # 'pass show' does, which is print it on stdout.
-        # 
+        #
         # We do not pass the -c option to put the information in the
         # clipboard, for two reasons.  One, many of our pass files are
         # multiline affairs containing descriptive data as well as the
@@ -549,7 +549,7 @@ def main():
     elif cmd == "rm":
         do_pass_thing(['rm', service,], sync=True)
     elif cmd == "push":
-        if not online_p: 
+        if not online_p:
             sys.stderr.write("ERROR: cannot use -o / --offline "
                              "with \"push\" command\n")
             sys.exit(1)
@@ -564,4 +564,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
