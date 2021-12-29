@@ -300,7 +300,7 @@ def main():
         sys.stderr.write("ERROR: Cannot find 'pass' program in PATH.\n")
         sys.exit(1)
 
-    def list_paths():
+    def list_paths(subpath=None):
         # We don't use the default list output of 'pass', because
         # that's a tree-style display (using the 'tree' utility)
         # that's not actually very useful for our purposes.  We want
@@ -315,12 +315,17 @@ def main():
         # If it turns out that some people really like the tree-style
         # output, we can easily add it back as an option, controlled
         # by a flag, a subcommand, an environment variable, whatever.
-        pass_top = password_store_root()
-        for root, dirs, files in os.walk(pass_top):
-            for f in files:
-                if f.endswith(".gpg"):
-                    # Substring skips leading slash and chops trailing ".gpg".
-                    print('{}/{}'.format(root.replace(pass_top, ''), f)[1:-4])
+        pass_root = password_store_root()
+        for dirpath, _, filenames in os.walk(pass_root):
+            # subpath within password_store_root
+            dirname = dirpath.replace(pass_root, '')
+            for filename in filenames:
+                if filename.endswith(".gpg"):
+                    # Remove leading slash and trailing ".gpg"
+                    path = '{}/{}'.format(dirname, filename)[1:-4]
+                    if subpath and not path.startswith(subpath):
+                        continue
+                    print(path)
 
     def do_git_svn_thing(thing):
         # THING is probably "rebase", "push", or "dcommit"
@@ -383,7 +388,7 @@ def main():
     if cmd == "ls" or cmd == "list":
         if online_p:
             do_git_svn_thing("rebase")
-        list_paths()
+        list_paths(subpath=service)
     elif cmd == "up" or cmd == "update" or cmd == "sync":
         if not online_p:
             sys.stderr.write("ERROR: cannot use -o / --offline "
@@ -538,7 +543,7 @@ def main():
         if service is not None:
             do_pass_thing(['show', service,], sync=False)
         else:
-            list_paths()
+            list_paths(subpath=service)
     elif cmd == "edit":
         do_pass_thing(['edit', service,], sync=True)
     elif cmd == "mv":
