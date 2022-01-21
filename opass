@@ -300,7 +300,7 @@ def main():
         sys.stderr.write("ERROR: Cannot find 'pass' program in PATH.\n")
         sys.exit(1)
 
-    def list_paths(subpath=None):
+    def list_paths(prefix=None):
         # We don't use the default list output of 'pass', because
         # that's a tree-style display (using the 'tree' utility)
         # that's not actually very useful for our purposes.  We want
@@ -323,7 +323,7 @@ def main():
                 if filename.endswith(".gpg"):
                     # Remove leading slash and trailing ".gpg"
                     path = '{}/{}'.format(dirname, filename)[1:-4]
-                    if subpath and not path.startswith(subpath):
+                    if prefix and not path.startswith(prefix):
                         continue
                     print(path)
 
@@ -388,7 +388,7 @@ def main():
     if cmd == "ls" or cmd == "list":
         if online_p:
             do_git_svn_thing("rebase")
-        list_paths(subpath=service)
+        list_paths(prefix=service)
     elif cmd == "up" or cmd == "update" or cmd == "sync":
         if not online_p:
             sys.stderr.write("ERROR: cannot use -o / --offline "
@@ -543,7 +543,7 @@ def main():
         if service is not None:
             do_pass_thing(['show', service,], sync=False)
         else:
-            list_paths(subpath=service)
+            list_paths(prefix=service)
     elif cmd == "edit":
         do_pass_thing(['edit', service,], sync=True)
     elif cmd == "mv":
