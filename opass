@@ -261,7 +261,7 @@ def main():
 
     try:
         (opts, args) = getopt.getopt(sys.argv[1:], "hov",
-                ["help", "offline", "verbose"])
+                ["help", "offline", "verbose",])
     except getopt.GetoptError as err:
         sys.stderr.write(str(err))
         sys.stderr.write("\n")
@@ -332,6 +332,7 @@ def main():
         try:
             args = [pass_pgm, 'git-svn', thing,]
             if verbose:
+                print("About to execute the following 'pass git-svn' command:")
                 print(args)
             completed = subprocess.run(args,
                                        capture_output=True,
@@ -375,6 +376,7 @@ def main():
         try:
             args = [pass_pgm,] + things
             if verbose:
+                print("About to execute the following 'pass' command:")
                 print(args)
             subprocess.run(args, input=content,
                            shell=False, encoding="UTF-8", check=True)
