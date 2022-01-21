@@ -45,7 +45,7 @@ Usage: opass COMMAND [-o|--offline] [SERVICE_NAME] [NEW_SERVICE_NAME]
 
 COMMAND is one of the following:
 
-   - list                  # 'ls' works too
+   - list [PREFIX]         # 'ls' works too
    - update                # 'up' works too, as does 'sync'
    - edit NAME_OF_SERVICE  # use this to edit existing or to add new
    - show NAME_OF_SERVICE  # 'get' or 'fetch' works too
@@ -73,6 +73,14 @@ will show all the users in the file and their keys.
 The 'ln' command creates a new service file that forwards to an
 existing service FOO by having content that just says "See FOO."  It
 is analogous to a Unix symlink, but a human has to interpret it.
+
+If you run the 'list' command with no argument, it will list all
+files in the password store. You can filter the list by passing a
+PREFIX. Note that this is purely a string-prefix match and does not
+take into account path components. That is, 'opass list some/path'
+will match 'some/path/' and 'some/path-to-another/file', but not
+'some/other/path' or 'secret/some/path', and 'opass list another/path/'
+will not match 'another/path'.
 
 If the "-o" ("--offline") option is passed, then perform only
 local operations and do not attempt to sync with the OTS repository.
@@ -315,6 +323,10 @@ def main():
         # If it turns out that some people really like the tree-style
         # output, we can easily add it back as an option, controlled
         # by a flag, a subcommand, an environment variable, whatever.
+        #
+        # If PREFIX is provided, this will only print paths that start
+        # with that PREFIX. Note that this is purely a string-prefix
+        # match and does not take into account path components.
         pass_root = password_store_root()
         for dirpath, _, filenames in os.walk(pass_root):
             # subpath within password_store_root
