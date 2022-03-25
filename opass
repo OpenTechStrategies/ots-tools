@@ -259,9 +259,11 @@ def main():
 
     verbose = False
 
+    git_svn_username = None
+
     try:
-        (opts, args) = getopt.getopt(sys.argv[1:], "hov",
-                ["help", "offline", "verbose",])
+        (opts, args) = getopt.getopt(sys.argv[1:], "hovu=",
+                ["help", "offline", "verbose", "username="])
     except getopt.GetoptError as err:
         sys.stderr.write(str(err))
         sys.stderr.write("\n")
@@ -275,6 +277,11 @@ def main():
             online_p = False
         if opt in ("-v", "--verbose",):
             verbose = True
+        if opt in ("-u", "--username",):
+            # This is '--username' instead of '--git-svn-username'
+            # because 'pass' doesn't take a username.  Internally, the
+            # variable is 'git_svn_username' because specificity FTW.
+            git_svn_username = optarg
 
     set_up_usermap()
 
@@ -330,6 +337,14 @@ def main():
     def do_git_svn_thing(thing):
         # THING is probably "rebase", "push", or "dcommit"
         try:
+            # WIP (issue #19): If 'git_svn_username' is not None, then
+            # here is where we should hand it to 'pass git-svn ...'
+            # But I don't know whether the 'pass-git-svn' extension
+            # (https://github.com/OpenTechStrategies/pass-git-svn.git)
+            # knows how receive '--username foo' and send it along to
+            # 'git-svn' (though note that 'git-svn' itself *does* take
+            # such an option, so the only problem here is transferring
+            # it through via our extension).
             args = [pass_pgm, 'git-svn', thing,]
             if verbose:
                 print("About to execute the following 'pass git-svn' command:")
