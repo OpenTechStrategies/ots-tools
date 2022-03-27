@@ -201,7 +201,7 @@ def main():
     if opt in ("-d", "--delimiter"):
       delim_re = re.compile(optarg)
     elif opt in ("-h", "-?", "--help", "--usage"):
-      print(__doc__);
+      print(__doc__)
       sys.exit(0)
     elif opt == "--summary":
       print("dmgrep [-d|--delimiter DELIM_REGEXP] [-i|--ignore-case] " \

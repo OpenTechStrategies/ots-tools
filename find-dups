@@ -468,7 +468,7 @@ def main():
 
     for opt, optarg in opts:
         if opt in ("-h", "-?", "--help", "--usage"):
-            print(__doc__);
+            print(__doc__)
             sys.exit(0)
         elif opt in ("--ignore-missing"):
             ignore_missing = True
