@@ -43,7 +43,7 @@ else
   LOCAL_REPOS_PATH="${2}"
 fi
 
-if [ -e ${LOCAL_REPOS_PATH} ]; then
+if [ -e "${LOCAL_REPOS_PATH}" ]; then
   echo "ERROR: path already exists: '${LOCAL_REPOS_PATH}'"
   echo "Please delete it or move it out of the way, then try again."
   exit 1
@@ -51,15 +51,15 @@ fi
 
 svnadmin create ${LOCAL_REPOS_PATH}
 
-echo '#!/bin/sh'  > ${LOCAL_REPOS_PATH}/hooks/pre-revprop-change
-echo ''          >> ${LOCAL_REPOS_PATH}/hooks/pre-revprop-change
-echo 'exit 0'    >> ${LOCAL_REPOS_PATH}/hooks/pre-revprop-change
-chmod a+x ${LOCAL_REPOS_PATH}/hooks/pre-revprop-change
+echo '#!/bin/sh'  > "${LOCAL_REPOS_PATH}"/hooks/pre-revprop-change
+echo ''          >> "${LOCAL_REPOS_PATH}"/hooks/pre-revprop-change
+echo 'exit 0'    >> "${LOCAL_REPOS_PATH}"/hooks/pre-revprop-change
+chmod a+x "${LOCAL_REPOS_PATH}"/hooks/pre-revprop-change
 
 LOCAL_REPOS_ABS_PATH=`(cd ${LOCAL_REPOS_PATH}; pwd)`
 LOCAL_REPOS_URL="file://${LOCAL_REPOS_ABS_PATH}"
 
 echo "Local repos URL: ${LOCAL_REPOS_URL}"
 
-svnsync init ${LOCAL_REPOS_URL} ${REMOTE_REPOS_URL}
-svnsync --non-interactive sync ${LOCAL_REPOS_URL}
+svnsync init "${LOCAL_REPOS_URL}" "${REMOTE_REPOS_URL}"
+svnsync --non-interactive sync "${LOCAL_REPOS_URL}"
