@@ -874,11 +874,12 @@ curly braces.  If there is no link around point, just return nil."
                (b (car bounds))
                (e (cdr bounds)))
           (if (save-excursion (goto-char e) (looking-at "\\[\\]"))
-              (save-match-data
-                (re-search-forward "\\($\\|\\s-\\)")
-                (when (eq (char-before) ? ) (forward-char -1))
-                (setq e (point))
-                (setq link (buffer-substring-no-properties b e)))
+              (save-excursion
+                (save-match-data
+                  (re-search-forward "\\($\\|\\s-\\)")
+                  (when (eq (char-before) ? ) (forward-char -1))
+                  (setq e (point))
+                  (setq link (buffer-substring-no-properties b e))))
             (setq link (thing-at-point 'url))))))
       (when link
         (when (save-match-data (string-match "^file:" link))
