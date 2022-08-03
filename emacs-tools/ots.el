@@ -854,7 +854,32 @@ curly braces.  If there is no link around point, just return nil."
         (setq link (org-link-unescape (match-string-no-properties 1))))
        ((setq link (ots-reftex-label-around-point)))
        ((thing-at-point 'url)
-        (setq link (thing-at-point 'url))))
+        ;; Passing the LAX arg as t here doesn't really help: on a URL like
+        ;; "https://example.com/-/issues?label_name[]=Statement+of+Work+%231"
+        ;; thingatpt will still end the URL before the "[".  Since we
+        ;; get URLs like that all the time from code.librehq.com, we
+        ;; manually fix it up.  A better solution would be to try to
+        ;; fix `thing-at-point' upstream, but that's a very sensitive
+        ;; function and one might break some other currently-working
+        ;; behavior in the process of fixing this behavior.
+        ;; 
+        ;; Note that this solution only works when point is before
+        ;; the "[]", too.  If it's after, we'll get no match and
+        ;; ultimately will return nil.  The solution to *that* would
+        ;; be to scan backwards across non-whitespace to find a URL
+        ;; schema prefix (if any) and do `thing-at-point' from there.
+        ;; But I've spent enough time on this already; that can wait
+        ;; for another day.
+        (let* ((bounds (thing-at-point-bounds-of-url-at-point t))
+               (b (car bounds))
+               (e (cdr bounds)))
+          (if (save-excursion (goto-char e) (looking-at "\\[\\]"))
+              (save-match-data
+                (re-search-forward "\\($\\|\\s-\\)")
+                (when (eq (char-before) ? ) (forward-char -1))
+                (setq e (point))
+                (setq link (buffer-substring-no-properties b e)))
+            (setq link (thing-at-point 'url))))))
       (when link
         (when (save-match-data (string-match "^file:" link))
           (setq link (substring link 5)))
