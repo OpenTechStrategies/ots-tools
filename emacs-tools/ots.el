@@ -504,7 +504,34 @@ entries), just update the running total for that entry type."
                   (setq hours-total (+ hours-total hours))
                   (let ((subtotal (* hours rate)))
                     (insert (format "%.2f" subtotal))
-                    (setq time-dollars (+ time-dollars subtotal)))))
+                    (setq time-dollars (+ time-dollars subtotal)))
+                  ;; This is so bizarre.  Without this brief delay, then
+                  ;; r20314 of 20220819-1.ltx (the only file with that
+                  ;; name in our tree) fails when this function is
+                  ;; run.  All the entries until the last four get
+                  ;; processed correctly, and then suddenly the error
+                  ;; "cond: Unrecognized entry type: ’{timereport}’"
+                  ;; occurs, as though the `re-search-forward' for
+                  ;; `entry-re' has somehow brought us to the line
+                  ;; "\end{timereport}" instead of to the next (that
+                  ;; is, the fourth from the bottom) "\timeentry".
+                  ;;
+                  ;; This is all with Emacs built from 'master' branch
+                  ;; (commit a936335aa02bd6d142ce61563e6cf70a1a7c271b,
+                  ;; according to `emacs-repository-version'), using
+                  ;; https://svn.red-bean.com/repos/kfogel/trunk/bin/makeit
+                  ;; at r6405.
+                  ;;
+                  ;; I'd love to debug this further, but I really
+                  ;; needed to get these invoices out the door.  So
+                  ;; for now, this incredible kluge, which is no doubt
+                  ;; papering over some very deep bug in Emacs, will
+                  ;; just live here.  Maybe some day I'll remember to
+                  ;; look into it, or I'll remember to test whether
+                  ;; the problem is still present and remove this
+                  ;; kluge if the problem is gone.
+                  (sit-for 0.000001)
+                  ))
                ((or (string-equal type "flat") (string-equal type "expense"))
                 (forward-char -1) (forward-sexp 2) (forward-char 1)
                 (let ((subtotal (string-to-number
