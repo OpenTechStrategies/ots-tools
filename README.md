@@ -1,21 +1,5 @@
-# OTS Tools
+2022-10-21: This repository has moved to [code.librehq.com/ots/ots-tools](https://code.librehq.com/ots/ots-tools).
 
-This repository contains various scripts we wrote at [Open Tech
-Strategies](https://opentechstrategies.com) to help us in our work.
-
-The ones we use most often are also the ones most likely to be useful
-to others.  They are:
-
-* [oref](emacs-tools/oref.el): a reference management system for Emacs
-* [find-dups](find-dups): find duplicate files under a given directory
-* [dmgrep](dmgrep): given text organized into delimited blocks, show which blocks match a certain pattern
-* [safergrep](safergrep) and [no-longer-than](no-longer-than): helpers for doing `grep`-style pattern-matching
-* `ots-org-display-headings-to-point` in [ots.el](emacs-tools/oref.el): an Org Mode helper for figuring out where you are
-
-The other tools may be worth checking out too, of course, depending on
-your needs.
-
-Note that once a utility becomes large enough, we usually move it from
-here to its own repository.  That's what happened with
-[csv2wiki](https://github.com/OpenTechStrategies/csv2wiki) for
-example.
+On a case-by-case basis, we may port issues and pull requests over to
+there, or we may handle them here and push the resolutions to there.
+In any case, all new activity should take place at the new location.
