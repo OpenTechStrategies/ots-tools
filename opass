@@ -45,7 +45,7 @@ Usage: opass COMMAND [-o|--offline] [SERVICE_NAME] [NEW_SERVICE_NAME]
 
 COMMAND is one of the following:
 
-   - list                  # 'ls' works too
+   - list [PREFIX]         # 'ls' works too
    - update                # 'up' works too, as does 'sync'
    - edit NAME_OF_SERVICE  # use this to edit existing or to add new
    - show NAME_OF_SERVICE  # 'get' or 'fetch' works too
@@ -73,6 +73,14 @@ will show all the users in the file and their keys.
 The 'ln' command creates a new service file that forwards to an
 existing service FOO by having content that just says "See FOO."  It
 is analogous to a Unix symlink, but a human has to interpret it.
+
+If you run the 'list' command with no argument, it will list all
+files in the password store. You can filter the list by passing a
+PREFIX. Note that this is purely a string-prefix match and does not
+take into account path components. That is, 'opass list some/path'
+will match 'some/path/' and 'some/path-to-another/file', but not
+'some/other/path' or 'secret/some/path', and 'opass list another/path/'
+will not match 'another/path'.
 
 If the "-o" ("--offline") option is passed, then perform only
 local operations and do not attempt to sync with the OTS repository.
@@ -305,7 +313,7 @@ def main():
         sys.stderr.write("ERROR: Cannot find 'pass' program in PATH.\n")
         sys.exit(1)
 
-    def list_paths():
+    def list_paths(prefix=None):
         # We don't use the default list output of 'pass', because
         # that's a tree-style display (using the 'tree' utility)
         # that's not actually very useful for our purposes.  We want
@@ -320,12 +328,21 @@ def main():
         # If it turns out that some people really like the tree-style
         # output, we can easily add it back as an option, controlled
         # by a flag, a subcommand, an environment variable, whatever.
-        pass_top = password_store_root()
-        for root, dirs, files in os.walk(pass_top):
-            for f in files:
-                if f.endswith(".gpg"):
-                    # Substring skips leading slash and chops trailing ".gpg".
-                    print('{}/{}'.format(root.replace(pass_top, ''), f)[1:-4])
+        #
+        # If PREFIX is provided, this will only print paths that start
+        # with that PREFIX. Note that this is purely a string-prefix
+        # match and does not take into account path components.
+        pass_root = password_store_root()
+        for dirpath, _, filenames in os.walk(pass_root):
+            # subpath within password_store_root
+            dirname = dirpath.replace(pass_root, '')
+            for filename in filenames:
+                if filename.endswith(".gpg"):
+                    # Remove leading slash and trailing ".gpg"
+                    path = '{}/{}'.format(dirname, filename)[1:-4]
+                    if prefix and not path.startswith(prefix):
+                        continue
+                    print(path)
 
     def do_git_svn_thing(thing):
         # THING is probably "rebase", "push", or "dcommit"
@@ -396,7 +413,7 @@ def main():
     if cmd == "ls" or cmd == "list":
         if online_p:
             do_git_svn_thing("rebase")
-        list_paths()
+        list_paths(prefix=service)
     elif cmd == "up" or cmd == "update" or cmd == "sync":
         if not online_p:
             sys.stderr.write("ERROR: cannot use -o / --offline "
@@ -551,7 +568,7 @@ def main():
         if service is not None:
             do_pass_thing(['show', service,], sync=False)
         else:
-            list_paths()
+            list_paths(prefix=service)
     elif cmd == "edit":
         do_pass_thing(['edit', service,], sync=True)
     elif cmd == "mv":
