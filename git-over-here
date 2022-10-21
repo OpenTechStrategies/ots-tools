@@ -1,20 +1,7 @@
 #!/bin/bash
 
-# *** WARNING WARNING WARNING WARNING WARNING WARNING WARNING ***
-# ***                                                         ***
-# ***       DRAFT   ***   WORK-IN-PROGRESS   ***   DRAFT      ***
-# ***                                                         ***
-# ***   This is still being written as of 2022-10-16.  Yes,   ***
-# ***   I could just keep it on a branch, but I'd rather      ***
-# ***   endanger everyone around me.  Please don't use it     ***
-# ***   yet, though -- it's not ready.  When this notice      ***
-# ***   goes away, that means I'm at least willing to use     ***
-# ***   this on my own data.  Your Mileage May Vary (TM).     ***
-# ***                                                         ***
-# *** WARNING WARNING WARNING WARNING WARNING WARNING WARNING ***
-
 # git-over-here: Switch multiple repositories from an old Git remote
-#                to a new remote (and optionally to a new branch).
+#                origin to a new one and, optionally, to a new branch.
 #
 # Search for "help" below to learn how to use this.
 
@@ -44,7 +31,7 @@ OLD_REMOTE to NEW_REMOTE.  If OLD_REMOTE and NEW_REMOTE are the same,
 then don't change any remotes, but use the specified remote to
 determine which repositories the -b option (see below) affects.
 
-If -b is added, then for all repositories that had an origin of
+With -b option added, then for all repositories that had an origin of
 OLD_REMOTE, rename branch OLD_BRANCH to NEW_BRANCH and set origin's
 upstream branch to NEW_REMOTE.  (A typical use is to change "master"
 to "main" across a bunch of repositories.)
@@ -115,7 +102,7 @@ for DOT_GIT_DIR in `find "${ROOT_DIR}" -type d -name "\.git" -print`; do
   cd "${DOT_GIT_DIR}/../" || continue
   HERE_ORIGIN="`git remote get-url origin`"
   if [ "${HERE_ORIGIN,,}" = "${OLD_REMOTE,,}" ]; then
-    echo "In '`pwd`':"
+    echo "* In '`pwd`':"
     # If the two remotes are equivalent (case-insensitively),
     # then don't touch the remote at all.
     if [ "${OLD_REMOTE,,}" != "${NEW_REMOTE,,}" ]; then
@@ -125,17 +112,40 @@ for DOT_GIT_DIR in `find "${ROOT_DIR}" -type d -name "\.git" -print`; do
       echo "  Switched origin remote to '${NEW_REMOTE}'."
     fi
     if [ "${OLD_BRANCH}" != "" ]; then
-      # TODO: We might still need an adjustment like this?  But only
-      #       if local HEAD had been pointing to tip of master, right?
-      # 
-      # git symbolic-ref refs/remotes/origin/HEAD refs/remotes/origin/"${NEW_BRANCH}"
-
+      if [ -n "`git status --porcelain=v1 2>/dev/null`" ]; then
+        echo "  SKIPPING branch change in '`pwd`':" >&2
+        echo "  There are uncommitted changes here." >&2
+        echo "  Please 'git stash' the changes and try again." >&2
+        echo ""
+        cd "${SAVED_CWD}"
+        continue
+      fi
       # If the new branch already exists, this will produce an error
       # (because we used -m instead of -M), which is what we want.
-      git branch -m "${OLD_BRANCH}" "${NEW_BRANCH}"             \
-        && git branch -u origin/"${NEW_BRANCH}" "${NEW_BRANCH}"
-      echo "  Renamed '${OLD_BRANCH}' to '${NEW_BRANCH}'."
+      if git branch --track=inherit -m "${OLD_BRANCH}" "${NEW_BRANCH}"; then
+        # Although it's not documented in the 'git branch' man page,
+        # if you were on ${OLD_BRANCH} when you ran the above command
+        # then you'll be automatically switched to ${NEW_BRANCH}.
+        if [ "`git branch --show-current`" != "${NEW_BRANCH}" ]; then
+          echo "  SKIPPING branch change in '`pwd`':" >&2
+          echo "  This directory is on branch '`git branch --show-current`'." >&2
+          echo "  Please put it on '${NEW_BRANCH}' branch and try again." >&2
+          echo ""
+          cd "${SAVED_CWD}"
+          continue
+        fi
+        git symbolic-ref refs/remotes/origin/HEAD refs/remotes/origin/"${NEW_BRANCH}"
+        git pull --quiet --set-upstream origin "${NEW_BRANCH}"
+        echo "  Renamed branch '${OLD_BRANCH}' to '${NEW_BRANCH}'."
+      else
+        echo "  CHECK '`pwd`':" >&2
+        echo "  Given that branch ${NEW_BRANCH} already exists," >&2
+        echo "  you might already be set up correctly here." >&2
+        echo "  (That's what the 'fatal' error above is about;" >&2
+        echo "  everything might actually be fine.)" >&2
+      fi
     fi
+  echo ""
   fi
   cd "${SAVED_CWD}"
 done

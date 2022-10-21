@@ -1,3 +1,4 @@
 # private config information for Google Sheets
 sheets_config.json
 credentials.json
+test-tmp-*
